@@ -24,9 +24,38 @@ Both skills are **user-invocable** — Claude Code will trigger them automatical
 - Peec AI MCP server connected — [official docs](https://app.peec.ai) (provides `mcp__peec-ai__*` tools)
 
 **Optional but strongly recommended:**
-- Visibly AI MCP server connected — [`visiblyai-mcp-server`](https://pypi.org/project/visiblyai-mcp-server/) (provides GSC/GA4 read-through via `mcp__visiblyai__*` tools)
+- Visibly AI MCP server connected — [`visiblyai-mcp-server`](https://pypi.org/project/visiblyai-mcp-server/) **≥ v0.6.0** (provides GSC/GA4 read-through, backlinks, onpage-analysis, and — since v0.6.0 — the `query_fanout` coverage analyzer)
 
-The skills degrade gracefully: without Visibly AI they still do the Peec setup and Reddit/forum mining; they just skip the GSC keyword mapping.
+Install the Visibly AI MCP locally:
+```bash
+pip install "visiblyai-mcp-server>=0.6.0"
+```
+
+### Tool matrix
+
+| Phase | MCP tool | Provider | Credits | Used by |
+|---|---|---|---|---|
+| 1 · Gap URLs | `mcp__peec-ai__get_url_report` (filter `gap > 0`) | Peec | free | content-intel |
+| 1 · Brands & prompts | `mcp__peec-ai__list_brands` / `list_prompts` / `list_topics` / `list_tags` | Peec | free | visibility-setup |
+| 2 · Query Fan-Out + coverage | **`mcp__visiblyai__query_fanout`** | Visibly ≥ 0.6.0 | ~3-5 | content-intel (primary), visibility-setup (optional) |
+| 3 · Chat mining (competitors + language) | `mcp__peec-ai__list_chats` → `get_chat` | Peec | free | visibility-setup |
+| 3 · Reddit / forum content | `mcp__peec-ai__get_url_content` (Peec has already scraped Reddit) | Peec | free | both |
+| 4 · GSC keywords | `mcp__visiblyai__get_keywords` / `query_search_console` | Visibly | 0 (via GSC) | visibility-setup |
+| 4 · Backlinks & authority | `mcp__visiblyai__get_backlinks` | Visibly | variable | content-intel |
+| 4 · 24-point OnPage audit | `mcp__visiblyai__onpage_analysis` | Visibly | 15 | content-intel |
+| 4 · Keyword intent + funnel | `mcp__visiblyai__classify_keywords` | Visibly | 1 | both |
+| 5 · Brand CRUD | `mcp__peec-ai__create_brand` / `delete_brand` | Peec | free | visibility-setup |
+| 5 · Prompt CRUD | `mcp__peec-ai__create_prompt` / `update_prompt` / `delete_prompt` | Peec | free | visibility-setup |
+| 6 · Topic/Tag CRUD | `mcp__peec-ai__create_topic` / `create_tag` / `delete_topic` | Peec | free | visibility-setup |
+| 7 · Recommendations | `mcp__peec-ai__get_actions(scope=overview|owned|editorial|ugc)` | Peec | free | visibility-setup |
+
+### Graceful degradation
+
+The skills work even when pieces are missing:
+
+- **Without Visibly AI**: both skills still do the Peec-side setup, competitor discovery from chats, Reddit/forum mining via Peec's scraped index, and taxonomy setup. They skip: GSC keyword mapping (Phase 4 of visibility-setup) and coverage analysis (Phase 2 of content-intel). The content brief is still generated, just without the depth/coverage scores.
+- **Without `query_fanout` (Visibly MCP < 0.6.0)**: the content-intel skill falls back to an inline Claude-generated 6-axis heuristic (synonym, decision, comparison, problem, long-tail, forum). Coverage matching is skipped.
+- **Without `classify_keywords`**: funnel-stage detection drops to keyword pattern matching inside the SKILL.md logic.
 
 ---
 

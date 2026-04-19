@@ -55,13 +55,38 @@ mcp__peec-ai__get_url_report(
 
 ---
 
-## Phase 2 — Query Fan-Out
+## Phase 2 — Query Fan-Out (via Visibly AI `query_fanout`)
 
-Ziel: Aus einem Parent-Prompt 5-8 **semantisch verwandte Sub-Queries** generieren. Diese Technik spiegelt, was Google AI Mode und Perplexity intern tun — sie zerlegen eine Query in mehrere Such-Perspektiven.
+Ziel: Aus einem Parent-Prompt **semantisch verwandte Sub-Queries** generieren UND gleich gegen den Content einer Ziel-URL matchen. Diese Technik spiegelt, was Google AI Mode und Perplexity intern tun — sie zerlegen eine Query in mehrere Such-Perspektiven.
 
-### Generation-Methode
+### Primäre Methode — MCP-Tool `mcp__visiblyai__query_fanout` (empfohlen, ab v0.6.0)
 
-Claude direkt instruieren (kein separater Tool-Call nötig):
+Visibly AI hat einen produktiven Query-Fan-Out-Analyzer (Gemini-grounded + semantic coverage matching):
+
+```
+mcp__visiblyai__query_fanout(
+  url: "https://<own-or-competitor-domain>/<page>",
+  keyword: "<focus_keyword>",
+  data_source: "dataforseo",           // "dataforseo" | "gsc" | "both"
+  gsc_property: null,                  // required wenn data_source="gsc"/"both"
+  language: "de"                       // "en" | "de"
+)
+```
+
+Returnt strukturiert:
+- `fanout_queries[]` — Gemini-generierte Sub-Queries aus dem Fokus-Keyword
+- `coverage_score` — 0-1, wie gut die URL die Sub-Queries inhaltlich abdeckt
+- `covered_count` / `total_count` — Zähler der abgedeckten Sub-Queries
+- `gaps[]` — Sub-Queries, die auf der URL NICHT adressiert sind → direkt dein Content-Backlog
+- `coverage_details[]` — pro Sub-Query: `best_match`, `match_type` (content/heading/faq), `matching_chunk`
+
+**Credits:** ~3-5 dynamisch (je nach data_source). URL + Keyword zwingend, Rest optional.
+
+Vorteil ggü. der inline-Heuristik unten: **eine einzige MCP-Call ersetzt die Heuristik + das Crawling + Semantic Matching aus Phase 4** komplett. Für jede Gap-URL aus Phase 1 einmal feuern und du hast Fan-Out + Content-Gap in einer Operation.
+
+### Fallback-Methode — inline Claude-Heuristik (wenn MCP-Tool nicht verfügbar)
+
+Wenn Visibly AI MCP nicht konfiguriert ist oder Credits knapp sind, kann Claude die Sub-Queries inline entlang 6 fester Intent-Achsen generieren:
 
 ```
 Prompt: "Generiere 6 Sub-Queries für den folgenden Parent-Prompt, 
@@ -77,6 +102,8 @@ Gib zurück:
 - Forum/Community-Variante (informelle Formulierung)
 "
 ```
+
+Dies liefert nur die Sub-Queries — Coverage-Matching muss dann manuell oder in Phase 4 separat gefahren werden.
 
 ### Qualitätskriterien
 
@@ -327,6 +354,7 @@ C:/Users/anton/OneDrive/Mabya/Dokumente/Claude/Content Automation/briefs/
 | Scraped Content der Competitor-URL | `mcp__peec-ai__get_url_content` |
 | Reddit direkt | `WebFetch("https://www.reddit.com/search.json?q=...")` |
 | Gutefrage / t3n / OMR | `WebSearch("site:...")` → `WebFetch(url)` |
+| Query Fan-Out + Coverage | `mcp__visiblyai__query_fanout(url, keyword)` — ab Visibly MCP v0.6.0 |
 | Backlink-Profil | `mcp__visiblyai__get_backlinks` |
 | 24-Punkt-OnPage-Audit | `mcp__visiblyai__onpage_analysis` (15 Cr.) |
 | Competitor-Keywords | `mcp__visiblyai__get_keywords` |
