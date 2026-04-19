@@ -6,14 +6,46 @@ These skills turn a freshly-invoked Peec AI project into an operator-ready setup
 
 ---
 
-## What's inside
+## Skill system (5 skills + 1 orchestrator)
+
+Not a feature list — a **closed growth loop**. Every skill has a specific job, and the orchestrator (`ai-growth-agent`) decides which one runs next.
+
+```
+     ┌────────────────────────────────────────────────────────┐
+     │                                                        │
+     │   UNDERSTAND          ai-visibility-setup              │
+     │   (prompts,           peec-content-intel (demand)      │
+     │    demand,                         ↓                   │
+     │    taxonomy)                                           │
+     │                                                        │
+     │   ANALYZE             content-cluster-builder          │
+     │   (strategic          peec-content-intel (sources)     │
+     │    zones)                          ↓                   │
+     │                                                        │
+     │   DECIDE    ◄──────── ai-growth-agent (orchestrator)   │
+     │   (one move)                       ↓                   │
+     │                                                        │
+     │   EXECUTE             @content-write (Visibly skill)   │
+     │   (build +            citation-outreach                │
+     │    distribute)                     ↓                   │
+     │                                                        │
+     │   LEARN               growth-loop-reporter             │
+     │   (attribution,                    ↓                   │
+     │    next moves)                                         │
+     │                                                        │
+     └────────→ feeds back into UNDERSTAND ───────────────────┘
+```
 
 | Skill | What it does | Credits | When to trigger |
 |---|---|---|---|
-| [`ai-visibility-setup`](skills/ai-visibility-setup/SKILL.md) | End-to-end Peec project configuration: competitor discovery from real AI chats, forum pain-mining (Reddit, Gutefrage, t3n, OMR), customer-journey prompt design across Awareness → Consideration → Decision → Retention, and structured topic/tag taxonomy. 9 phases, fully automated. | free (uses Peec + Visibly MCPs directly) | "Set up Peec for [client]", "My Peec competitors are wrong", "Restructure Peec topics" |
-| [`peec-content-intel`](skills/peec-content-intel/SKILL.md) | Content-intelligence workflow: Peec gap-URLs → Query Fan-Out → Reddit/forum pain mining (via Peec's scraped index, bypassing Reddit's WebFetch block) → Visibly backlinks + onpage → opportunity scoring → publish-ready content brief. 6 phases. | ~10–45 Visibly credits per prompt analyzed | "Which content wins Peec prompt X?", "Build a content brief from Peec data" |
+| [`ai-visibility-setup`](skills/ai-visibility-setup/SKILL.md) | End-to-end Peec project configuration: competitor discovery from real AI chats, forum pain-mining (Reddit, Gutefrage, t3n, OMR), customer-journey prompt design across Awareness → Consideration → Decision → Retention, and structured topic/tag taxonomy. 9 phases. | free | "Set up Peec for [client]", "My Peec competitors are wrong", "Restructure Peec topics" |
+| [`peec-content-intel`](skills/peec-content-intel/SKILL.md) | Content-intelligence workflow: Peec gap-URLs → Query Fan-Out (via `mcp__visiblyai__query_fanout` ≥ v0.6.0) → Reddit/forum pain mining (via Peec's scraped index, bypassing Reddit's WebFetch block) → Visibly backlinks + onpage → opportunity scoring → publish-ready content brief. 6 phases. | ~10–45 Visibly cr | "Which content wins Peec prompt X?", "Build a content brief from Peec data" |
+| [`content-cluster-builder`](skills/content-cluster-builder/SKILL.md) | Turns a flat Peec prompt set into **strategic topic zones** — clustered by intent × funnel stage × visibility gap × demand signal. Produces 4-8 zones, each with a concrete "one move now" action and a measurable success metric. Persists zones as Peec tags for later attribution. | ~5–15 cr | "I have 20+ prompts, give me a content architecture, not a calendar" |
+| [`citation-outreach`](skills/citation-outreach/SKILL.md) | Converts Peec's `get_actions` + forum/UGC discovery into a **prioritized outreach pipeline**: contact extraction, pitch templates per channel type (editorial / Reddit / Gutefrage / YouTube), tracker file, citation-gain measurement. 5 pitches/week cap by default. | free | "Content is shipped — now I need external citations" |
+| [`growth-loop-reporter`](skills/growth-loop-reporter/SKILL.md) | Weekly/monthly **loop-closer**: measures visibility delta per prompt/zone, attributes it to specific content + outreach investments, detects winning patterns, outputs a ≤ 400-word narrative with 3 next-actions and at least 1 "stop doing". Persists learnings for the next cycle. | free | Weekly ritual or after any major action |
+| [`ai-growth-agent`](skills/ai-growth-agent/SKILL.md) **(orchestrator)** | The decision-making layer above the other 5. Reads project state + last learnings, scans gaps, picks **one** next move, hands off to the right skill with parameters pre-filled. Tells you "do exactly this now" instead of "here is a dashboard". | free | "What should I work on this week?" |
 
-Both skills are **user-invocable** — Claude Code will trigger them automatically when the conversation matches, and users can also invoke them explicitly with `/ai-visibility-setup` or `/peec-content-intel`.
+All skills are **user-invocable** — Claude Code triggers them automatically when the conversation matches, and users can invoke them explicitly with `/ai-visibility-setup`, `/peec-content-intel`, `/content-cluster-builder`, `/citation-outreach`, `/growth-loop-reporter`, or `/ai-growth-agent`.
 
 ---
 
