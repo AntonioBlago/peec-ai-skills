@@ -1,227 +1,203 @@
 ---
 name: citation-outreach
-description: Turns Peec AI's get_actions recommendations + forum/UGC discovery into a prioritized outreach pipeline with pitch templates, contact extraction, status tracking, and success metrics. Goes beyond "here is a list of domains" — produces ready-to-send pitches, handles the Reddit/Gutefrage/editorial/owned quadrants, and tracks citation gains week-over-week. Use when a Peec project has active competitor gaps and needs systematic off-site work, not just content production.
+description: Turns Peec AI's get_actions recommendations + forum/UGC discovery into a prioritized outreach pipeline with pitch templates, contact extraction, status tracking, and success measurement. Goes beyond "here is a list of domains" — produces ready-to-send pitches, covers Reddit / Gutefrage / editorial / owned quadrants, and tracks citation gains week over week. Use when a Peec project has active competitor gaps and needs systematic off-site work, not just content production.
 user-invocable: true
 ---
 
-# Citation Outreach — From Actions to Actual Citations
+# Citation Outreach
 
-Content zu schreiben reicht nicht. Der **Mehrheit der AI-Sichtbarkeits-Gewinne** kommt nicht aus einer neuen Seite auf der eigenen Domain, sondern aus **Zitaten auf Domains, die LLMs ohnehin crawlen**. Dieser Skill wandelt `get_actions`-Empfehlungen + aufgedeckte Forum-Threads in einen **systematischen Outreach-Prozess** — mit Pitch-Templates, Kontakt-Extraktion, Status-Tracking und Wirkungs-Messung.
+## Role
+Writing new content isn't enough — most AI-visibility lift comes from citations on domains LLMs already crawl. This skill turns `get_actions` plus forum discovery into a **prioritized outreach pipeline** with concrete, target-specific pitches, a tracker, and a citation-gain measurement after 4 weeks.
 
-Er ist die **Execution-Seite** der Growth-Loop, komplementär zu den Build-Seiten (`content-cluster-builder`, `content-write`).
+## Input
+- `project_id` — Peec project
+- optional `scope` — `editorial` | `ugc` | `reference` | `owned` | `all` (default `all`)
+- optional `weekly_cap` — max pitches per week (default 5)
+- optional `own_asset_url` — an own URL to actively pitch (case study, pillar, tool)
 
----
+## Output
+- One outreach tracker at `<project>/outreach/YYYY-Wkk_outreach_log.md` (schema below)
+- One ready-to-send pitch per queued target, filled with concrete quote + concrete offer
+- After 4 weeks: one attribution summary feeding into `growth-loop-reporter`
 
-## Wann einsetzen
+## When to use
+- After `@ai-visibility-setup` Phase 8 or `@peec-content-intel` Phase 6 — when the opportunity list is in
+- Weekly ritual: 3–5 quality pitches to stay independent of Google
+- Whenever Peec `get_actions` surfaces high-opportunity `editorial` / `ugc` / `reference` rows
 
-- Nach `@ai-visibility-setup` Phase 8 oder `@peec-content-intel` Phase 6 — wenn die Opportunity-Liste steht
-- Wöchentlich als Ritual: Top-3-Outreaches pro Woche, um beim Traffic nicht abhängig von Google zu bleiben
-- Immer wenn Peec's `get_actions` hohe Opportunity-Scores für `editorial`, `ugc` oder `reference` ausgibt
-
-Nicht einsetzen wenn:
-- Keine Opportunity-Liste aus Peec vorliegt (erst `get_actions` laufen)
-- Marke hat noch keine Referenz-Page / Case-Study, die man pitchen könnte (erst `content-write` für eigene Foundation)
-
----
-
-## Eingaben
-
-- **Pflicht:** Peec `project_id`
-- **Optional:** `scope` — `editorial` / `ugc` / `reference` / `owned` / `all` (Default `all`)
-- **Optional:** `weekly_cap` — wie viele Outreaches max pro Woche (Default 5)
-- **Optional:** `own_asset_url` — eine eigene URL, die du aktiv pitchen willst (Case-Study, Pillar, Tool)
+Do not use when:
+- No opportunity list from Peec (run `get_actions` first)
+- Brand has no reference page / case study to pitch yet (run `content-write` first)
 
 ---
 
-## Ablauf
+## Pipeline
 
-### 1. Opportunity-Quellen aggregieren
-
-Drei Peec-Calls parallel:
+### 1. Aggregate opportunity sources
 
 ```
-mcp__peec-ai__get_actions(project_id, scope="overview", start_date, end_date)
+mcp__peec-ai__get_actions(project_id, scope="overview",  start_date, end_date)
 mcp__peec-ai__get_actions(project_id, scope="editorial", start_date, end_date)
-mcp__peec-ai__get_actions(project_id, scope="ugc", domain="reddit.com", start_date, end_date)
+mcp__peec-ai__get_actions(project_id, scope="ugc", domain="reddit.com",  start_date, end_date)
 mcp__peec-ai__get_actions(project_id, scope="ugc", domain="youtube.com", start_date, end_date)
-```
 
-Plus Gap-URLs aus dem Domain-Report:
-
-```
 mcp__peec-ai__get_domain_report(
-    project_id, start_date, end_date,
-    filters: [{field: "gap", operator: "gt", value: 0}],
-    limit: 40
+  project_id, start_date, end_date,
+  filters=[{field: "gap", operator: "gt", value: 0}],
+  limit=40
 )
 ```
 
-→ eine konsolidierte Kandidaten-Tabelle mit Spalten:
-`target_url | domain | type | opportunity_score | retrieval % | citation_rate | mentioned_brand_ids`
+Merge into one candidate table:
+`target_url | domain | type | opportunity_score | retrieval_% | citation_rate | mentioned_brand_ids`
 
-### 2. Kandidaten in 4 Quadranten einsortieren
+### 2. Sort into 4 quadrants
 
 ```
-         │  Hoch Impact  │  Niedrig Impact
-─────────┼───────────────┼──────────────────
-Easy Ask │  QUICK WINS   │  SNACKABLE
-         │  (Pitchen!)   │  (Wenn Zeit)
-─────────┼───────────────┼──────────────────
-Hard Ask │  STRATEGIC    │  DROP
-         │  (Relationship│
-         │   aufbauen)   │
+         │  High impact     │  Low impact
+─────────┼──────────────────┼──────────────────
+Easy ask │  QUICK WINS      │  SNACKABLE
+         │  (pitch now)     │  (when time allows)
+─────────┼──────────────────┼──────────────────
+Hard ask │  STRATEGIC       │  DROP
+         │  (build relation)│
 ```
 
-**Impact-Signal:** `opportunity_score × retrieval_%`.
-**Difficulty-Signal:**
-- `easy` = Reddit-Thread (nur Antwort posten), Gutefrage, OMR-Forum
-- `medium` = Editorial-Blog (Outreach-Email), LinkedIn-Autor
-- `hard` = Major-Publikation, geschlossene Community
+- **Impact** = `opportunity_score × retrieval_%`
+- **Difficulty**:
+  - `easy`   = reddit thread (just post), Gutefrage, OMR forum
+  - `medium` = editorial blog (email), LinkedIn author
+  - `hard`   = major publication, closed community
 
-### 3. Kontakt-Extraktion pro Kandidat
+### 3. Extract contact per target
 
-Je nach Typ unterschiedliche Extraktion:
-
-| Typ | Quelle für Kontakt |
+| Target type | Contact source |
 |---|---|
-| Editorial-Blog | `WebFetch(url)` → Autor-Box / LinkedIn-Link / Kontakt-Seite |
-| Reddit-Thread | OP-Username sichtbar in `mcp__peec-ai__get_url_content` Output |
-| YouTube | Channel-URL aus `channel_title` → `/about`-Seite für Kontakt |
-| Gutefrage | kein Direkt-Kontakt (Antwort-Post direkt) |
-| LinkedIn-Pulse | Autor-Profil im URL-Pfad |
+| Editorial blog | `WebFetch(url)` → author box / LinkedIn / contact page |
+| Reddit thread | OP username visible in `mcp__peec-ai__get_url_content` output |
+| YouTube | channel URL from `channel_title` → `/about` page |
+| Gutefrage | no direct contact (post the answer directly) |
+| LinkedIn Pulse | author profile in URL path |
 
-Pro Kandidat strukturieren:
-`target_url | target_type | contact_method | contact_handle | language | observed_topic_focus`
+Produce: `target_url | target_type | contact_method | contact_handle | language | topic_focus`
 
-### 4. Pitch-Template-Auswahl
+### 4. Pick pitch template
 
-Pro Kandidaten-Typ einen Template-Typ:
+**Write in the target's language.** The templates below are structural — fill them in the language of the target URL.
 
-#### Template: Editorial-Inclusion-Pitch (EN/DE)
-
-```
-Subject: Expert quote for your article on <thema> — <1-line angle>
-
-Hi <Autor-Name>,
-
-ich bin auf Ihren Artikel "<Title>" gestoßen, während ich recherchiert habe zu
-<konkreter Bezug zum Artikel>. Eine Stelle würde aus meiner Praxis einen
-zusätzlichen Winkel vertragen: <konkrete Stelle>.
-
-Ich arbeite seit <N> Jahren als <Rolle> mit <Spezialisierung>. Kürzlich haben
-wir bei einem <Projekt-Kontext> beobachtet, dass <konkrete Zahl / Erkenntnis>.
-
-Hätten Sie Interesse an einem 2-3-Satz-Zitat oder einem kurzen Kasten mit
-meinem Take? Ich liefere Text + Name + Headshot innerhalb von 48 Stunden.
-
-<Signatur mit antonioblago.de + 1 Referenz-URL>
-```
-
-**Regel:** Konkrete Stelle zitieren, konkrete Ergänzung anbieten, kein generisches
-„ich würde gerne kooperieren".
-
-#### Template: Reddit-Thread-Antwort
-
-Kein klassischer Pitch — direkte, substanzielle Antwort (150-300 Wörter) auf die OP-Frage. Regeln:
-
-1. **Erste 2 Sätze:** direkte Antwort auf die Frage, keine Einleitung.
-2. **Mittelteil:** konkrete Methode / Zahl / Beispiel aus eigener Praxis.
-3. **Optional am Ende:** 1 eigene Quelle, nur wenn sie die Antwort vervollständigt — niemals als Call-to-Action.
-4. **Sprache:** die Sprache des Original-Posts.
-5. **Username:** authentischer Account, keine Brand-Accounts (Reddit-Policy).
-
-#### Template: Gutefrage/Forum-Antwort
-
-Identisch zu Reddit-Template, aber 100-200 Wörter reichen — Gutefrage-User bevorzugen kompakte Antworten.
-
-#### Template: YouTube-Kommentar / Pin-Pitch
-
-Zweistufig:
-1. **Substanzieller Kommentar** unter dem Video (300-500 Zeichen, Frage + Ergänzung)
-2. **Nach 48h ohne Response:** Email an Channel-Owner mit Referenz zu 3 eigenen Videos / Blog-Inhalten, die zum Channel-Thema passen
-
-### 5. Pitch-Template mit Projekt-Kontext befüllen
+#### Editorial inclusion pitch
 
 ```
-mcp__peec-ai__get_project(project_id) / mcp__visiblyai__get_project(project_id)
-  → brand_name, unique_selling_points, custom_content_prompt, crawl_summary
+Subject: Expert quote for your article on <topic> — <1-line angle>
+
+Hi <author>,
+
+I came across your article "<title>" while researching <concrete tie-in>.
+One section could use an added angle from my practice: <concrete section>.
+
+I've worked <N> years as <role> with <specialization>. In a recent
+<project context>, I observed <concrete number / finding>.
+
+Would a 2–3 sentence expert quote or a short sidebar with my take work?
+I can deliver copy + name + headshot within 48 hours.
+
+<signature with own domain + 1 reference URL>
 ```
 
-Falls nur Claude Code MCP verfügbar (kein Visibly):
-  → Projekt-Kontext aus bestehenden Chat-Infos + `get_brand_report` aggregieren
+**Rule:** quote the concrete section, offer a concrete addition. No generic "happy to collaborate".
 
-Claude füllt jetzt pro Kandidat das passende Template mit **spezifischen** Details:
-- statt `<konkrete Stelle>` → echtes Quote aus der Target-URL
-- statt `<konkrete Zahl>` → echte Zahl aus dem eigenen Projekt (Retainer-Client-Fall, Traffic-Lift, Case-Study)
-- statt `<Projekt-Kontext>` → konkrete Branche des Target-Autors
+#### Reddit thread answer
 
-### 6. Outreach-Tracker (persistent)
+Not a pitch — a direct, substantive answer to the OP (150–300 words). Rules:
 
-Neue Datei im Projekt-Workspace:
+1. First 2 sentences answer the question directly — no preamble
+2. Middle: one concrete method / number / example from own practice
+3. Optionally end with one own source — only if it completes the answer, never as CTA
+4. Match the OP's language exactly
+5. Use a personal account, never a brand account (reddit policy)
+
+#### Gutefrage / forum answer
+
+Same shape as Reddit, 100–200 words. Forum users prefer compact answers.
+
+#### YouTube comment + follow-up
+
+1. Substantive comment under the video (300–500 chars, question + addition)
+2. After 48h without response: email to the channel owner referencing 3 of your own videos / posts that match the channel theme
+
+### 5. Fill templates with project context
+
 ```
-<project>/outreach/YYYY-Wkk_outreach_log.md
+mcp__peec-ai__get_project(project_id)
+# or: mcp__visiblyai__get_project(project_id)
+#   → brand_name, USPs, custom_content_prompt, crawl_summary
 ```
 
-Format:
+Per candidate, replace every angle bracket with **specific** detail:
+- `<concrete section>` → real quote from target URL
+- `<concrete number>` → real number from own project (retainer case, traffic lift, measurable result)
+- `<project context>` → concrete industry of the target author
+
+### 6. Append to tracker
+
+File: `<project>/outreach/YYYY-Wkk_outreach_log.md`
 
 ```markdown
-# Outreach Log — Week <ISO-Week>
+# Outreach log — week <ISO-week>
 
-| # | Target | Type | Status     | Sent      | Replied | Citation | Notes |
-|---|--------|------|-----------|-----------|---------|----------|-------|
-| 1 | evergreen.media/ratgeber/ki-seo | editorial | sent | 2026-04-22 | pending | — | Pitched expert quote on retainer-pricing |
-| 2 | r/selbststaendig/comments/xyz | reddit | posted | 2026-04-22 | — | answer_score=12 | — |
-| 3 | ... |
+| # | Target | Type | Status | Sent | Replied | Citation | Notes |
+|---|--------|------|--------|------|---------|----------|-------|
+| 1 | evergreen.media/ratgeber/ki-seo | editorial | sent   | 2026-04-22 | pending | — | expert quote on retainer pricing |
+| 2 | r/selbststaendig/comments/xyz   | reddit    | posted | 2026-04-22 | —       | answer_score=12 | — |
 ```
 
-Status-Werte: `queued` → `sent` / `posted` → `replied` → `citation_live` / `declined` / `ignored`
+Status values: `queued` → `sent` | `posted` → `replied` → `citation_live` | `declined` | `ignored`
 
-### 7. Success-Metrik + Re-Feed in Growth-Loop
+### 7. Measure after 4 weeks
 
-Nach 4 Wochen pro Target:
+For each target with `status=citation_live`:
 
 ```
-Für jede target_url mit status=citation_live:
-    mcp__peec-ai__get_url_report(filters: [{field: "url", values: [<target_url>]}])
-    → retrievals vorher vs nachher messen
-    → aus get_brand_report: ist die own-brand-visibility für Prompts
-       gestiegen, die diese URL als Source hatten?
+mcp__peec-ai__get_url_report(filters=[{field: "url", values: [target_url]}])
+# retrievals before vs. after
+mcp__peec-ai__get_brand_report(...)
+# own-brand visibility for prompts that had this URL as source
 ```
 
-Gewinner (Citation-Gain > Baseline) werden im `growth-loop-reporter`-Skill als
-"funktionierendes Hebel-Muster" gemerkt → zukünftige Pitches priorisieren ähnliche Ziele.
+Winners (citation gain > baseline) feed into `growth-loop-reporter` as a "working leverage pattern" — next cycle prioritizes similar targets.
 
 ---
 
-## Quick Command Reference
+## Quick reference
 
-| Schritt | Tool |
+| Step | Tool |
 |---|---|
-| Opportunity-Quellen | `mcp__peec-ai__get_actions(scope=overview/editorial/ugc)` |
-| Gap-URLs (Konkurrenten drin, du nicht) | `mcp__peec-ai__get_domain_report(filters: gap>0)` |
-| Thread-Kontext + OP | `mcp__peec-ai__get_url_content` |
-| Kontakt-Extraktion | `WebFetch` auf Target-URL |
-| Projekt-Frame für Pitch | `mcp__peec-ai__list_projects` + `get_project` |
-| Citation-Messung | `mcp__peec-ai__get_url_report(dimensions=["date"])` |
+| Opportunity sources | `mcp__peec-ai__get_actions(scope=overview/editorial/ugc)` |
+| Gap URLs | `mcp__peec-ai__get_domain_report(filters: gap>0)` |
+| Thread content + OP | `mcp__peec-ai__get_url_content` |
+| Contact extraction | `WebFetch` on target URL |
+| Project frame for pitch | `mcp__peec-ai__list_projects` + `get_project` |
+| Citation measurement | `mcp__peec-ai__get_url_report(dimensions=["date"])` |
 
 ---
 
-## Output-Qualitäts-Kriterien
+## Done criteria (self-check before returning)
 
-Ein Outreach-Batch ist NUR dann fertig, wenn:
+An outreach batch is only complete when:
 
-1. **Maximal `weekly_cap` Pitches.** 5 hochwertige Pitches schlagen 20 generische.
-2. **Jeder Pitch hat ein konkretes Quote.** Kein „interessanter Artikel" — ein Satz aus dem Target wird direkt zitiert.
-3. **Jeder Pitch bietet etwas Spezifisches.** Kein „ich habe Expertise in X" — „ich liefere <konkretes Asset> bis <Datum>".
-4. **Tracker ist aktiv.** Alle Pitches in der Log-Datei, mit `status=sent` / `posted` nach Versand.
-5. **Success-Kriterium pro Pitch klar.** „Ich erwarte eine Erwähnung in der <Sektion>, messbar via Peec `get_url_report` binnen 6 Wochen."
+1. ≤ `weekly_cap` pitches — 5 quality pitches beat 20 generic ones
+2. Every pitch has a concrete quote from the target URL
+3. Every pitch offers something specific — a concrete asset, by a concrete date
+4. Tracker is live — every pitch logged with `status=sent | posted`
+5. Each pitch has an explicit success criterion: "expecting a mention in section X, measurable via `get_url_report` within 6 weeks"
 
 ---
 
-## Häufige Fehler
+## Guardrails (do not do these)
 
-- **Generische Pitches:** „ich würde gerne zu Ihrem Blog beitragen" ignoriert wird jedes Mal. Spezifisch zitieren oder weglassen.
-- **Reddit/Gutefrage mit Brand-Account:** bannt dich aus der Community. Nur persönliche Accounts, keine Firmen.
-- **Kein Follow-up-Tracking:** 30-50% aller Editorial-Citations kommen aus Follow-ups nach 7-10 Tagen. Ohne Tracker verloren.
-- **Zu viel auf einmal:** 3 gute Pitches pro Woche, die durchdacht sind, schlagen 15 Massen-Pitches. Capacity > Volumen.
-- **Kein Measurement-Loop:** wer seine Citation-Gewinner nicht trackt, kann das nächste Mal nicht priorisieren.
+- Do not send generic "happy to contribute" pitches — quote something specific or don't send
+- Do not use a brand account on Reddit / Gutefrage — it gets you banned; only personal accounts
+- Do not skip follow-ups — 30–50% of editorial citations come from a follow-up 7–10 days later
+- Do not exceed the weekly cap — 3 considered pitches beat 15 mass pitches
+- Do not pitch before there's an asset to back it — no case study or reference page = no substance
+- Do not measure before 4 weeks — LLM indexing of new citations takes time

@@ -1,242 +1,200 @@
 ---
 name: ai-growth-agent
-description: Master-orchestrator for the full AI-visibility growth loop. Runs the 9 specialized skills in a closed feedback loop — understand market → analyze visibility → decide priorities → execute content + outreach → learn. Returns a single "do exactly this now" decision per cycle, not a dashboard. Use when you want the agent to own the growth strategy, not just answer isolated questions. This is the strategic layer above content-cluster-builder, citation-outreach, and growth-loop-reporter.
+description: Orchestrator for the 5 Peec AI growth skills (ai-visibility-setup, peec-content-intel, content-cluster-builder, citation-outreach, growth-loop-reporter). Reads project state and last learnings, detects the single highest-leverage gap, and returns exactly one next-move decision with a measurable 4-week metric — then hands off to the skill that executes it. Use when multiple priorities compete and you need one call, not a dashboard.
 user-invocable: true
 ---
 
-# AI Growth Agent — Decide, Don't Just Report
+# AI Growth Agent
 
-Das ist **kein Tool mehr — es ist ein Agent**. Die anderen 9 Skills sind Werkzeuge, die der Agent je nach Situation greift. Sein einziger Job:
+## Role
+Pick the single next move for a Peec AI project. One decision, one skill handoff, one measurable 4-week target. Nothing else.
 
-> **„Für welche Prompts solltest du sichtbar sein — und was musst du konkret tun, um dort zu gewinnen?"**
+## Input
+- `project_id` — resolve via `mcp__peec-ai__list_projects` if unknown
+- optional `focus` — force a specific gap type (`taxonomy|cluster|content|citation|learning`)
 
-Der Unterschied zu einem Dashboard:
+## Output
+One markdown document matching the schema in §5, plus one appended entry in `<project>/growth_loop/decisions_log.md`. Nothing else is produced.
 
-| Dashboard | Growth Agent |
-|---|---|
-| Zeigt Daten | **Trifft Entscheidungen** |
-| Listet Optionen | **Nennt die eine, die jetzt zählt** |
-| Erwartet Interpretation | **Liefert das Urteil** |
-| Läuft einmal | **Läuft im Loop** |
+## When to use
+- Weekly 30-min ritual: "what is the one thing this week?"
+- When multiple priorities compete and clarity is missing
+- Quarterly strategy refresh
 
----
-
-## Wann einsetzen
-
-- Als **primärer Entry-Point** für Peec-basierte Growth-Arbeit — statt einzelne Skills manuell zu feuern, bittet man den Agent, die Strategie zu steuern
-- **Wöchentlich** als 30-Minuten-Ritual: "Was ist die eine Sache, die ich diese Woche tun muss?"
-- **Quartalsweise** als Strategie-Refresh: "Ist mein Ansatz noch richtig? Muss ich die Prompts oder Zonen überarbeiten?"
-- Immer wenn **mehrere konkurrierende Prioritäten** auf dem Tisch liegen und Klarheit fehlt
-
-Nicht einsetzen wenn:
-- Man konkret weiß, was man will (dann direkt das spezifische Skill feuern)
-- Es noch keine Peec-Daten gibt (erst `ai-visibility-setup` laufen)
+Do not use when:
+- The answer is already known — call the target skill directly
+- Peec project has <7 days of data — run `ai-visibility-setup` first
 
 ---
 
-## Der Loop
-
-Kein linearer Funnel — ein Kreis, der sich mit jedem Durchlauf schärft:
+## The loop
 
 ```
      ┌─────────────────────────────────────────────────┐
      │                                                 │
      │  1. UNDERSTAND                                  │
-     │     ai-visibility-setup  (Prompts + Taxonomie)  │
-     │     peec-content-intel   (Demand-Signals)       │
+     │     ai-visibility-setup  (prompts + taxonomy)   │
+     │     peec-content-intel   (demand signals)       │
      │                  ↓                              │
      │  2. ANALYZE                                     │
-     │     content-cluster-builder (Zonen)             │
-     │     peec-content-intel      (Source-Intel)      │
+     │     content-cluster-builder (zones)             │
+     │     peec-content-intel      (source intel)      │
      │                  ↓                              │
      │  3. DECIDE                                      │
-     │     → THIS SKILL: welche Zone + welche Action   │
+     │     → THIS SKILL: one zone + one action         │
      │                  ↓                              │
      │  4. EXECUTE                                     │
-     │     content-write    (neuer Content)            │
-     │     citation-outreach (externe Citations)       │
+     │     content-write     (new content)             │
+     │     citation-outreach (external citations)      │
      │                  ↓                              │
      │  5. LEARN                                       │
      │     growth-loop-reporter                        │
      │                  ↓                              │
-     └───────→ Feedback in Stufe 1 ←───────────────────┘
+     └───────→ feedback into step 1 ────────────────────┘
 ```
 
-Jeder Durchlauf dauert **1 Woche** (aktive Projekte) oder **4 Wochen** (Maintenance).
+One full cycle: **1 week** for active projects, **4 weeks** for maintenance.
 
 ---
 
-## Ablauf des Agents
+## Pipeline
 
-### 1. State-Read: wo stehen wir?
-
+### 1. Read state
 ```
-mcp__peec-ai__list_projects                  → welches Projekt?
-Read: <project>/growth_loop/*_learnings.json → letzte Lektionen
-Read: <project>/outreach/*_outreach_log.md   → aktuelle Outreach-Pipeline
-mcp__peec-ai__get_brand_report(              → aktuelle Visibility-Lage
-    dimensions=["date"], start_date=-28d)
+mcp__peec-ai__list_projects                       → resolve project
+mcp__peec-ai__get_brand_report(dimensions=["date"], start_date=-28d)
+Read: <project>/growth_loop/*_learnings.json      (may not exist)
+Read: <project>/growth_loop/decisions_log.md      (may not exist)
+Read: <project>/outreach/*_outreach_log.md        (may not exist)
+
+# Cross-project priors (optional, if SkillMind MCP is available)
+mcp__skillmind__recall(query="<likely gap type>", k=5, filter_tags=["peec"])
 ```
 
-Wenn noch keine Historie existiert: Agent sagt ehrlich *"Erster Lauf — ich habe keine Lern-Basis. Ich entscheide heute auf Basis der Strukturdaten. Nächster Lauf wird genauer."*
+If no history exists: say so plainly ("first run — deciding from structural data only, next run will be sharper") and continue. If SkillMind is not installed, skip the recall step — patterns are a bonus prior, not a requirement.
 
-### 2. Gap-Scan: wo ist der größte Hebel?
+### 2. Detect gap (priority ladder — higher tier always wins)
 
-Der Agent prüft 4 Gap-Typen parallel und wählt den stärksten:
+| Tier | Gap | Signal | Handoff |
+|---|---|---|---|
+| 1 | Data | Peec has <7 days of history | STOP. Wait, do not force action. |
+| 2 | Taxonomy | Missing funnel stage · tags unclear · <20 prompts | `ai-visibility-setup` (full or partial) |
+| 3 | Cluster | 20+ prompts, no strategic zones / tags | `content-cluster-builder` |
+| 4 | Content | Zones exist, but a zone has no hero asset | `content-write` (external) or `peec-content-intel` for the brief |
+| 5 | Citation | Hero content exists, no external citations | `citation-outreach` |
+| 6 | Learning | Loop is running, no pattern tracking | `growth-loop-reporter` |
 
-| Gap-Typ | Signal | Skill-Ausweg |
-|---|---|---|
-| **Taxonomie-Gap** | Funnel-Stufe fehlt, Tag-System unscharf | `ai-visibility-setup` (Teil-Refresh) |
-| **Cluster-Gap** | 20+ Prompts ohne strategische Zonen | `content-cluster-builder` |
-| **Content-Gap** | eine Zone definiert, aber kein Hero-Asset | `content-write` |
-| **Citation-Gap** | starker Content, aber keine externen Erwähnungen | `citation-outreach` |
+**Rule:** Exactly one tier per cycle. If two tiers look tied, pick the lower number. Parallel work across tiers means the tiers weren't ranked properly — fix the ranking.
 
-Entscheidung: **den Gap-Typ priorisieren, bei dem `potential_impact / effort` maximal ist**.
+### 3. Produce decision (see §5 schema)
 
-### 3. The Decision (das ist das Kernprodukt)
+The decision names **one** skill, **one** scope, **one** 4-week metric with a concrete number. No "and also", no "optionally". If the measurable change wouldn't happen in 4 weeks, the metric is wrong — rewrite it.
 
-Der Agent formuliert **eine einzige** Next-Move-Entscheidung, strukturiert so:
+### 4. Hand off
+
+Invoke the target skill with parameters pre-filled. Do not recommend — execute. The user can override at any point, but default is execution.
+
+### 5. Log
+
+Append to `<project>/growth_loop/decisions_log.md` using the schema in §6. Every next run reads this file first — the log IS the memory.
+
+---
+
+## Decision output schema
 
 ```markdown
-# Growth Agent — <Projekt> (<Datum>)
+# Growth Agent — <project name> (<YYYY-MM-DD>)
 
-## Entscheidung
-<EIN Satz. Kein "auch", kein "und ggf.". Ein Verb, ein Objekt, ein Deadline.>
+## Decision
+<One sentence. One verb. One object. One deadline.>
 
-## Warum gerade das
-<3-5 Sätze. Die kausale Kette: Signal X → daraus folgt Y → deshalb diese Action.>
+## Why this, now
+<3–5 sentences. Causal chain: signal → implication → therefore this action.>
 
-## Wie konkret
-Gehe jetzt in <skill-name> und laufe mit diesen Parametern:
-  <Parameter 1>: <Wert>
-  <Parameter 2>: <Wert>
+## How
+Run <skill-name> with:
+  <param>: <value>
+  <param>: <value>
 
-## Was das in 4 Wochen messbar ändert
-<Konkrete Metrik + Zahl. "Peec-Visibility für Cluster X geht von 6% auf 15%."
- Kein "Wir wachsen". Wenn die Metrik sich nicht bewegt, war die Entscheidung falsch.>
+## Measurable in 4 weeks
+<Specific metric + number. "Visibility on prompt pr_xxx: 0% → ≥15%."
+ If this doesn't move, the decision was wrong.>
 
-## Was NICHT jetzt (bewusst verschoben)
-- <Option A>: verschoben weil <Grund>
-- <Option B>: verschoben weil <Grund>
+## Not doing now (explicit skip)
+- <option>: skipped because <reason>
+- <option>: skipped because <reason>
 
-## Nächster Loop-Checkpoint
-<Datum. Hier läuft der Agent wieder und prüft die Metrik oben.>
+## Next checkpoint
+<YYYY-MM-DD> — re-run agent, measure the metric above.
 ```
 
-### 4. Skill-Hand-Off
-
-Nach der Entscheidung: der Agent **ruft das entsprechende Skill direkt auf**, mit den bereits ausgewählten Parametern. Das ist keine Empfehlung, das ist Ausführung.
-
-Der User kann jederzeit eingreifen („Halt, nicht Zone X — Zone Y"), aber die Default-Action ist Ausführung, nicht Warten.
-
-### 5. Post-Execute: Ergebnis an den Loop zurückgeben
-
-Nach Skill-Ausführung schreibt der Agent einen Eintrag in:
-
-```
-<project>/growth_loop/decisions_log.md
-```
-
-Schema:
+## Decision log schema
 
 ```markdown
-## 2026-04-19 — Decision: content-cluster-builder
+## <YYYY-MM-DD> — <skill-name>
 
-Signal: 47 Prompts, aber nur implicit Funnel-Tagging und kein Zone-System
-Entscheidung: Cluster-Build, max 6 Zonen, Fokus E-Commerce + Retainer
-Parameter: project_id=or_bf..., target_zones=6
-Ausgeführt: ✓
-Output: 6 Zonen, Top-Score "KI-SEO Retainer Decision" (0.87)
-Nächster Checkpoint: 2026-05-17 — messen: Peec-Visibility für Zone "KI-SEO Retainer Decision"
+Signal: <what in the data triggered this>
+Decision: <one sentence>
+Params: <key=value, key=value>
+Executed: ✓ | ✗ <reason>
+Output: <one line on what came out>
+Checkpoint: <YYYY-MM-DD> — metric: <name + target>
 ```
-
-Beim nächsten Lauf liest der Agent das Decision-Log und weiß, wo er im Loop steht.
 
 ---
 
-## Decision-Framework: der Agent entscheidet nach dieser Hierarchie
+## Handoff matrix
 
-Wenn mehrere Gaps gleichzeitig existieren, gewinnt der Gap mit der höchsten Stufe:
-
-```
-Stufe 1: Datenlücke (Peec hat weniger als 7 Tage Historie)
-         → "Warten" ist legitim. Keine Aktion zwingen.
-
-Stufe 2: Strukturlücke (keine Funnel-Taxonomie, keine Zonen)
-         → IMMER zuerst strukturieren, bevor man investiert.
-
-Stufe 3: Hebel-Lücke (Zonen da, aber kein Hero-Asset pro Zone)
-         → CONTENT zuerst.
-
-Stufe 4: Distributions-Lücke (Hero-Content da, aber keine externen Signale)
-         → OUTREACH zuerst.
-
-Stufe 5: Lern-Lücke (alles läuft, aber kein Pattern-Tracking)
-         → LOOP-REPORTER aktivieren.
-```
-
-Nur **einer** dieser Stufen ist pro Loop-Cycle dran. Paralleles Arbeiten in zwei Stufen ist fast immer Anzeichen fehlender Prioritäten.
-
----
-
-## Was der Agent NIEMALS sagt
-
-- *"Hier sind viele Optionen"* → dann hat er seinen Job nicht gemacht.
-- *"Es kommt darauf an"* → ohne zu sagen, worauf genau.
-- *"Analysiere folgende Daten"* → der Agent analysiert, er delegiert nicht.
-- *"Alles läuft gut, mach weiter"* → ein kritisches Auge ist die Kern-Leistung.
-- *"Ich brauche mehr Input"* → außer bei Stufe 1 (echte Datenlücke).
-
----
-
-## Quick Command Reference
-
-| Intent | Skill-Call |
+| Intent | Skill |
 |---|---|
-| Ersteinrichtung / Taxonomie | `@ai-visibility-setup` |
-| Zonen-Architektur | `@content-cluster-builder` |
-| Demand + Source-Research | `@peec-content-intel` |
-| Neuer Artikel | `@content-write` |
-| Outreach + Citations | `@citation-outreach` |
-| Wochen-/Monats-Learning | `@growth-loop-reporter` |
+| Setup / taxonomy / competitors | `@ai-visibility-setup` |
+| Strategic zones from flat prompt set | `@content-cluster-builder` |
+| Source / demand research for a prompt | `@peec-content-intel` |
+| New article (handled outside this repo) | `@content-write` |
+| External citations & outreach | `@citation-outreach` |
+| Weekly / monthly loop close | `@growth-loop-reporter` |
 
 ---
 
-## Beispiel-Agent-Output (echt, aus Antonio-Projekt)
+## Example (real output, Antonio Blago project, 2026-04-19)
 
 ```markdown
 # Growth Agent — Antonio Blago (2026-04-19)
 
-## Entscheidung
-Baue bis 2026-04-26 die Content-Zone "KI-SEO Retainer Decision" 
-mit genau einem Hero-Artikel als Fundament.
+## Decision
+Build the content zone "KI-SEO Retainer Decision" by 2026-04-26 with one hero article.
 
-## Warum gerade das
-47 Peec-Prompts sind aktiv, aber die Decision-Stufe ist nur von 3 schwachen 
-Prompts abgedeckt, von denen 2 bei 0% Visibility stehen. Der Retainer ist 
-dein Hauptumsatz-Produkt — Decision-Stage muss die stärkste Zone sein, 
-ist aktuell die schwächste. Keine andere Stufe löst dieses strukturelle Problem.
+## Why this, now
+47 Peec prompts are active, but the Decision stage is covered by only 3 weak prompts,
+2 of which sit at 0% visibility. The Retainer is the main revenue product — Decision
+must be the strongest zone, is currently the weakest. No other tier resolves this gap.
 
-## Wie konkret
-Gehe jetzt in content-write und laufe mit:
+## How
+Run content-write with:
   project_id: or_bf5b4228-7344-4f71-b231-c4396a7775f6
   focus_keyword: "KI-SEO Retainer"
   page_type: blog
   language: de
 
-## Was das in 4 Wochen messbar ändert
-Peec-Visibility für den Hero-Prompt pr_a38381d4 geht von 0% auf ≥ 15%,
-und die Aggregations-Visibility der Zone "KI-SEO Retainer Decision"
-erreicht > 10%.
+## Measurable in 4 weeks
+Visibility on pr_a38381d4: 0% → ≥15%. Aggregate visibility of zone
+"KI-SEO Retainer Decision": → >10%.
 
-## Was NICHT jetzt (bewusst verschoben)
-- Neues Awareness-Cluster ("Was ist GEO?") — verschoben, weil dort
-  ohnehin schon 4 Prompts laufen und Decision-Gap größer ist.
-- Citation-Outreach — erst wenn der Hero-Content live ist, 
-  sonst keine Substanz für Pitches.
+## Not doing now (explicit skip)
+- New Awareness cluster ("Was ist GEO?") — 4 prompts already cover it, smaller gap.
+- Citation outreach — no substance to pitch until hero content is live.
 
-## Nächster Loop-Checkpoint
-2026-05-17 — Messung: Peec-Visibility-Trend für pr_a38381d4 + Zone-Tag.
+## Next checkpoint
+2026-05-17 — measure visibility trend for pr_a38381d4 + zone tag.
 ```
 
-Das ist das Produkt. **Eine Entscheidung. Konkret. Messbar. Mit Exit-Bedingung.**
+---
+
+## Guardrails (do not do these)
+
+- Do not list options — pick one
+- Do not say "it depends" without saying on what
+- Do not delegate analysis back to the user — the analysis is the job
+- Do not say "everything is fine, keep going" — a critical read is the core value
+- Do not ask for more input, except at Tier 1 (genuine data gap)
+- Do not work on two tiers in parallel

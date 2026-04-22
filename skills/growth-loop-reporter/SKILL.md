@@ -1,182 +1,172 @@
 ---
 name: growth-loop-reporter
-description: Weekly / monthly closed-loop reporter for Peec AI visibility growth. Measures what actually moved (visibility per prompt, cluster, zone) against what was invested (content published, pitches sent, forum answers), detects winning patterns, and outputs a ranked next-actions list — not a dashboard. This is the "Adaptive Learning + Reporting" closer of the growth agent loop. Use weekly for active projects or monthly for maintenance-mode projects.
+description: Weekly / monthly closed-loop reporter for Peec AI visibility growth. Measures what moved (visibility per prompt, cluster, zone) against what was invested (content published, pitches sent, forum answers), detects winning patterns, and outputs a ranked next-actions list — not a dashboard. Closes the feedback loop for the growth agent. Use weekly for active projects or monthly for maintenance-mode.
 user-invocable: true
 ---
 
-# Growth Loop Reporter — What Worked, What Didn't, What's Next
+# Growth Loop Reporter
 
-Das ist der **Loop-Closer**. Er nimmt die kumulative Historie aus Content-Cluster-Builder + Content-Write + Citation-Outreach und beantwortet drei Fragen:
+## Role
+Close the loop. Three questions per cycle, answered in ≤400 words:
 
-1. **Was hat sich bewegt?** (Visibility-Trend pro Prompt / Cluster / Zone)
-2. **Warum?** (Welche spezifische Investition hat welchen Lift verursacht?)
-3. **Was als Nächstes?** (Priorisierte Next-Actions, nicht abstrakter Insight)
+1. **What moved?** — visibility trend per prompt, cluster, zone
+2. **Why?** — which specific investment caused which lift
+3. **What next?** — 3 prioritized actions, at least 1 stop-doing
 
-Output ist **keine Dashboard** und **keine Datenauflistung** — sondern eine **kurze Narrative + Action-Liste**, die ein Mensch in 3 Minuten liest und direkt umsetzen kann.
+Output is a short narrative + actions, not a dashboard. Fifteen charts don't get read. 400 words do.
+
+## Input
+- `project_id` — Peec project
+- `reporting_window` — `weekly` | `monthly` | `quarterly`
+- optional `baseline_date` — default 28 / 90 / 180 days back
+- optional `include_clusters` — auto-detected via `zone:*` tags if `content-cluster-builder` has run
+
+## Output
+- One narrative at `<project>/growth_loop/YYYY-MM-DD_report.md` (schema below)
+- One `learnings.json` with winners / losers / surprises / next_actions / stop_doing — consumed by the next `content-cluster-builder` and `citation-outreach` runs as priors
+
+## When to use
+- Weekly for active projects with running content + outreach
+- Monthly for retainer projects in maintenance
+- Quarterly as strategy review — feeds the next `content-cluster-builder` run
+- After a launch, publication, or new zone going live
+
+Do not use when:
+- Project has <4 weeks of history (too little signal)
+- No content or outreach actions in the window (nothing to learn)
 
 ---
 
-## Wann einsetzen
+## Pipeline
 
-- **Wöchentlich** bei aktiven Projekten mit laufendem Content + Outreach
-- **Monatlich** bei Retainer-Projekten in Maintenance-Mode
-- **Quartalsweise** als Strategie-Review — feeds in den nächsten `content-cluster-builder`-Run
-- Nach großen Aktionen: ein Launch, eine Publikation, eine neue Zone
-
-Nicht einsetzen wenn:
-- Projekt hat noch keine 4-Wochen-Historie (zu wenig Signal)
-- Keine Content- oder Outreach-Aktionen im Zeitraum (nichts zu lernen)
-
----
-
-## Eingaben
-
-- **Pflicht:** Peec `project_id`
-- **Pflicht:** `reporting_window` — `weekly` / `monthly` / `quarterly`
-- **Optional:** `baseline_date` — Default 28/90/180 Tage zurück
-- **Optional:** `include_clusters` — wenn `content-cluster-builder` gelaufen ist und Zonen als Tags existieren (automatisch erkannt über `tag:zone:*`)
-
----
-
-## Ablauf
-
-### 1. Zeitreihe der Kern-Metriken ziehen
-
-Drei Peec-Calls mit `dimensions=["date"]`:
+### 1. Pull time-series of core metrics
 
 ```
-# Overall brand-Visibility-Trend
+# Overall brand visibility trend
 mcp__peec-ai__get_brand_report(
-    project_id, start_date=baseline, end_date=now,
-    dimensions: ["date"],
-    filters: [{field: "brand_id", operator: "in", values: [<own_brand_id>]}]
+  project_id, start_date=baseline, end_date=now,
+  dimensions=["date"],
+  filters=[{field: "brand_id", operator: "in", values: [own_brand_id]}]
 )
 
-# Pro Prompt (für die Top-N nach Gewicht)
+# Per prompt (top-N by weight)
 mcp__peec-ai__get_brand_report(
-    project_id, start_date=baseline, end_date=now,
-    dimensions: ["prompt_id", "date"],
-    filters: [{field: "brand_id", operator: "in", values: [<own>]}]
+  project_id, start_date=baseline, end_date=now,
+  dimensions=["prompt_id", "date"],
+  filters=[{field: "brand_id", operator: "in", values: [own_brand_id]}]
 )
 
-# Pro Zone (wenn zone:*-Tags existieren)
-Für jeden zone:*-Tag:
-    mcp__peec-ai__get_brand_report(
-        project_id, start_date=baseline, end_date=now,
-        dimensions: ["tag_id", "date"],
-        filters: [{field: "tag_id", values: [<zone_tag_id>]}]
-    )
+# Per zone (if zone:* tags exist)
+for each zone_tag:
+  mcp__peec-ai__get_brand_report(
+    project_id, start_date=baseline, end_date=now,
+    dimensions=["tag_id", "date"],
+    filters=[{field: "tag_id", values: [zone_tag_id]}]
+  )
 ```
 
-Pro Bucket (Prompt oder Zone) drei Werte errechnen:
-- `visibility_t0` (Anfang Zeitraum)
-- `visibility_t1` (Ende Zeitraum)
-- `delta` = t1 - t0
-- `trend` = linear regression slope über alle Daten im Zeitraum
+Per bucket (prompt or zone) compute:
+- `visibility_t0` (start of window)
+- `visibility_t1` (end of window)
+- `delta` = t1 − t0
+- `trend` = linear-regression slope across the window
 
-### 2. Investitions-Log zusammenstellen
-
-Alle Aktionen im Zeitraum sammeln:
+### 2. Assemble investment log
 
 ```
-# Neuer Content
+# New content
 git log --since=<baseline> --author=<user> -- "Content Automation/blog/"
-# oder: file-system scan nach blog/YYYY-MM-DD_*/
+# or: filesystem scan for blog/YYYY-MM-DD_*/
 
 # Outreach
 Read: <project>/outreach/*_outreach_log.md
-  → alle Pitches im Zeitraum mit status != 'queued'
+# all pitches with status != 'queued' in the window
 
-# Prompt / Brand / Tag Änderungen in Peec
+# Taxonomy changes in Peec
 mcp__peec-ai__list_prompts + list_brands + list_tags
-  → vergleiche mit Snapshot vom Anfang des Zeitraums (wenn vorhanden)
+# diff against a snapshot from the start of the window (if one exists)
 ```
 
-Ergebnis: eine Liste aller "Investments" mit:
-`date | type (content/outreach/taxonomy) | target (prompt_id oder url) | description`
+Produce: one list of investments with `date | type (content|outreach|taxonomy) | target (prompt_id or url) | description`.
 
-### 3. Correlation zwischen Investment und Lift
+### 3. Match investment → lift
 
-Pro Investment: welche Prompts / Zonen wären theoretisch gelift worden?
+- **Content investment** → prompts whose focus_keyword is referenced in the HTML body
+  - Extract focus keyword from `publish_<slug>.py` (`RANK_MATH_FOCUS`)
+  - Match against `list_prompts` via embedding or string-contains
+- **Outreach investment (citation live)** → prompts where `target_url` appears in `get_url_report`
+  - `mcp__peec-ai__get_url_report(filters=[{url in [target_url]}])`
+- **Zone intervention** → all prompts with the zone tag
 
-- **Content-Investition** → Prompts, deren focus_keyword im HTML-Body referenziert ist
-  - Extrahiere Focus-KW aus `publish_<slug>.py` (`RANK_MATH_FOCUS`)
-  - Match gegen `list_prompts` via Embedding/String-Contains
-
-- **Outreach-Investition (Citation live)** → Prompts, für die die target_url in `get_url_report` als Source erscheint
-  - `mcp__peec-ai__get_url_report(filters: [url in [<target_url>]])`
-
-- **Zone-Intervention** → alle Prompts mit dem Zone-Tag
-
-### 4. Attribution-Score pro Investment
+### 4. Compute attribution per investment
 
 ```
-attribution_score = 
+attribution_score =
     sum(affected_prompts[p].delta for p in matched_prompts)
-    - baseline_drift  # was hätte sich ohne die Intervention bewegt?
+  - baseline_drift
 ```
 
-**Baseline-Drift** = der Median-Delta der NICHT-betroffenen Prompts im selben Zeitraum. Das isoliert den Effekt der Intervention.
+**baseline_drift** = median delta of non-affected prompts in the same window. This isolates the intervention effect from general drift.
 
-### 5. Pattern-Detection
+### 5. Detect patterns (three buckets)
 
-Lektionen in 3 Buckets suchen:
+**Winners** (high attribution):
+- Which content type (HOW_TO / COMPARISON / PILLAR) moved the most
+- Which outreach target class (EDITORIAL / UGC / REFERENCE) produced most citations
+- Which zone grew fastest
 
-**A. Gewinner-Muster** (hohe attribution_scores):
-- Welcher Content-Typ (HOW_TO / COMPARISON / PILLAR) hat am meisten gelift?
-- Welche Outreach-Target-Domain-Class (EDITORIAL / UGC / REFERENCE) am meisten Citations gebracht?
-- Welche Zone ist am schnellsten gewachsen?
+**Losers** (negative or zero attribution despite investment):
+- Content published but not indexed / cited
+- Pitches with no response after 14 days
+- Zones stagnant despite new content (→ content misses the intent layer)
 
-**B. Verlierer-Muster** (negative attribution oder Null-Delta trotz Investment):
-- Content, der trotz Publish nicht indexiert/zitiert wurde
-- Pitches ohne Response nach 14 Tagen
-- Zonen, die trotz Content stagnieren (→ Content trifft nicht die Intent-Ebene)
+**Surprises** (positive delta without a direct investment):
+- Prompts that gained without direct action (organic spillover from another page?)
+- Sudden drops (competitor action? algorithm shift?)
 
-**C. Überraschungen** (positive Delta ohne direktes Investment):
-- Prompts, die ohne direkte Aktion gewonnen haben (organischer Spillover einer anderen Seite?)
-- Plötzliche Einbrüche (Wettbewerber-Aktion? Algorithm-Änderung?)
+### 6. Generate the narrative
 
-### 6. Narrative-Generierung
+Claude synthesizes a narrative **≤400 words** using the schema below.
 
-Claude synthesisiert eine **maximal 400-Wort-Narrative** mit diesem Aufbau:
+### 7. Persist learnings
+
+Save to `<project>/growth_loop/YYYY-MM-DD_learnings.json` — used by the next runs of `content-cluster-builder` and `citation-outreach` as priors.
+
+---
+
+## Narrative schema
 
 ```markdown
-# Growth Loop — <Projekt> (<Zeitraum>)
+# Growth loop — <project> (<window>)
 
-## Schlagzeile
-<1 Satz: Was ist die wichtigste Erkenntnis dieser Woche / dieses Monats?>
+## Headline
+<One sentence: what's the most important insight of this period?>
 
-## Was sich bewegt hat
-- Visibility gesamt: X% → Y% (<N Prozentpunkte>)
-- Stärkste Zone: <Name> (+Z%)
-- Schwächste Zone: <Name> (flat oder -)
-- Top-3 Einzel-Prompts mit größtem Lift: <Liste>
+## What moved
+- Overall visibility: X% → Y% (<N pp>)
+- Strongest zone: <name> (+Z%)
+- Weakest zone: <name> (flat or −)
+- Top-3 single-prompt lifts: <list>
 
-## Was das bewirkt hat (was nachweisbar wirkte)
-<2-3 Sätze. Nicht "Content-Plan" — sondern: "Der Artikel X ist in 11 von 15 Ziel-Prompts
-als Citation aufgetaucht; der Retainer-Pitch bei evergreen.media hat Y Citations
-binnen 10 Tagen gebracht; die Shopify-Zone ist organisch gewachsen, obwohl dort
-noch kein neuer Content lief — wahrscheinlich Spillover von Zone Z.">
+## What actually worked
+<2–3 sentences. Not "the content plan" — but: "Article X became a citation in 11 of 15
+target prompts; the retainer pitch at evergreen.media produced Y citations within 10
+days; the Shopify zone grew organically without new content there — likely spillover
+from zone Z.">
 
-## Was NICHT funktioniert hat
-<1-2 Sätze: welches Investment hatte 0-Effekt, und warum wahrscheinlich>
+## What did not work
+<1–2 sentences: which investment had zero effect, and the most plausible reason.>
 
-## MACH JETZT (priorisiert, max. 3)
-1. <Konkrete Action mit Deadline>
-2. <Konkrete Action>
-3. <Konkrete Action>
+## DO NOW (prioritized, max 3)
+1. <concrete action with deadline>
+2. <concrete action>
+3. <concrete action>
 
-## MACH NICHT MEHR
-- <Falls ein Muster als Zeitverschwendung identifiziert wurde>
+## STOP DOING
+- <pattern that was identified as time-waste>
 ```
 
-### 7. Lern-Persistenz (für den nächsten Loop)
-
-```
-<project>/growth_loop/YYYY-MM-DD_learnings.json
-```
-
-JSON-Schema:
+## Learnings JSON schema
 
 ```json
 {
@@ -197,39 +187,38 @@ JSON-Schema:
 }
 ```
 
-Die next-run-Instanz von `content-cluster-builder` und `citation-outreach` lesen diese Datei als Priors: höher gewichtete Content-Typen, höher gewichtete Outreach-Domains.
-
 ---
 
-## Quick Command Reference
+## Quick reference
 
-| Schritt | Tool |
+| Step | Tool |
 |---|---|
-| Visibility-Trend gesamt | `mcp__peec-ai__get_brand_report(dimensions=["date"])` |
-| Pro Prompt | `mcp__peec-ai__get_brand_report(dimensions=["prompt_id", "date"])` |
-| Pro Zone (wenn getaggt) | `mcp__peec-ai__get_brand_report(dimensions=["tag_id", "date"])` |
-| Citation-Source-Check | `mcp__peec-ai__get_url_report(filters: url in [...])` |
-| Content-Log | git-log auf Content-Automation-Pfad |
-| Outreach-Log | lokale `<project>/outreach/*.md` |
+| Overall visibility trend | `mcp__peec-ai__get_brand_report(dimensions=["date"])` |
+| Per prompt | `mcp__peec-ai__get_brand_report(dimensions=["prompt_id", "date"])` |
+| Per zone (if tagged) | `mcp__peec-ai__get_brand_report(dimensions=["tag_id", "date"])` |
+| Citation source check | `mcp__peec-ai__get_url_report(filters: url in [...])` |
+| Content log | git log on content-automation path |
+| Outreach log | local `<project>/outreach/*.md` |
 
 ---
 
-## Output-Qualitäts-Kriterien
+## Done criteria (self-check before returning)
 
-Ein Growth-Report ist NUR dann fertig, wenn:
+A growth report is only complete when:
 
-1. **Narrative ≤ 400 Wörter.** Längere Reports werden nicht gelesen und sind meist voller Hedging.
-2. **Attribution ist begründet, nicht geraten.** Jeder Gewinner/Verlierer muss einen konkreten Kausal-Mechanismus haben, nicht nur Korrelation.
-3. **Genau 3 Next-Actions.** Nicht 7, nicht 1. Drei ist die Capacity-Grenze einer Woche.
-4. **Mindestens 1 "STOP DOING".** Der Mut, etwas zu verwerfen, ist wertvoller als neue Ideen.
-5. **Learnings-JSON persistiert.** Ohne das ist kein Loop.
+1. Narrative is ≤400 words — longer reports aren't read and usually hedge
+2. Attribution is reasoned, not guessed — every winner / loser needs a causal mechanism, not just correlation
+3. Exactly 3 next-actions — not 7, not 1. Three is the weekly capacity ceiling
+4. At least 1 STOP DOING — the courage to discard is worth more than new ideas
+5. `learnings.json` persisted — without it, no loop
 
 ---
 
-## Häufige Fehler
+## Guardrails (do not do these)
 
-- **Dashboard statt Narrative:** 15 Charts werden nicht gelesen. 400 Wörter werden gelesen.
-- **Korrelation als Kausalität verkaufen:** Visibility ist gestiegen, also hat der Content funktioniert. Vielleicht. Der Wettbewerber hatte SSL-Ausfall.
-- **Baseline-Drift ignoriert:** ohne Vergleichsgruppe ist jeder Lift verdächtig.
-- **Keine STOP-DOING-Liste:** man addiert, aber subtrahiert nie. Energie fragmentiert.
-- **Report ohne Persistenz:** der nächste Lauf lernt nicht.
+- Do not ship a dashboard — a dashboard is not a report
+- Do not sell correlation as causation — visibility went up; competitor also had an SSL outage
+- Do not ignore baseline drift — without a comparison group, every lift is suspect
+- Do not skip the STOP DOING line — addition without subtraction fragments energy
+- Do not ship a report without persisting learnings — the next cycle can't learn
+- Do not run this before 4 weeks of history — too little signal, pattern detection degenerates to noise

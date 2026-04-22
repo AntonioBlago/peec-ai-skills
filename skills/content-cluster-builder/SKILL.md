@@ -1,225 +1,205 @@
 ---
 name: content-cluster-builder
-description: Turns a Peec AI prompt set into strategic content zones — not keyword groups. Groups prompts by buyer intent + funnel stage + visibility gap + shared demand signals, producing 4-8 "content zones" with assigned competitive weaknesses to attack, supporting evidence (forum quotes, SERP patterns), and a rank-ordered next-move per zone. Use when a Peec project has 20+ prompts and needs a topic architecture — not a flat content calendar. Output is a strategic map, not a list.
+description: Turns a Peec AI prompt set into strategic content zones — not keyword groups. Groups prompts by buyer intent + funnel stage + visibility gap + shared demand signals, producing 4–8 "content zones" with the competitive weakness to attack, supporting evidence (forum quotes, SERP patterns), and a rank-ordered next-move per zone. Use when a Peec project has 20+ prompts and needs a topic architecture — not a flat content calendar. Output is a strategic map, not a list.
 user-invocable: true
 ---
 
-# Content Cluster Builder — Strategic Topic Zones from Peec Prompts
+# Content Cluster Builder
 
-Ein **Cluster ist kein Keyword-Thema** — es ist eine **strategische Angriffszone**: eine Gruppe von Peec-Prompts, die gemeinsam eine kauf-entscheidende Frage aus einem bestimmten Winkel beantwortet, bei der die eigene Marke einen spezifischen strukturellen Hebel hat.
+## Role
+Reduce a flat Peec prompt set to 4–8 **strategic zones** — each with a structural weakness in the competition, one measurable metric, and one "do exactly this now" action. Not keyword clusters. Not a content calendar.
 
-Dieser Skill ersetzt das klassische „Keyword-Clustering" durch eine **dreidimensionale Gruppierung**:
+A zone is coherent only when three axes line up:
 
 ```
       Intent
        ↑
-Visibility-Gap
+Visibility gap
        ↑
-Demand-Signal
+Demand signal
 ```
 
-Nur wenn eine Prompt-Gruppe auf allen drei Achsen kohärent ist, wird sie zu einer **Content-Zone** mit strategischem Wert.
+If a candidate zone fails any axis, it gets merged or dropped.
+
+## Input
+- `project_id` — Peec project
+- optional `date_range` — default last 30 days
+- optional `target_zones` — default 4–8 (skill picks the resolution)
+- optional `focus_funnel_stage` — restrict to one stage
+
+## Output
+One markdown zone map (schema in §Output schema), plus one Peec tag per zone (`zone:<slug>`) with all prompts retagged, so `growth-loop-reporter` can measure zone lift later.
+
+## When to use
+- ≥20 Peec prompts and the team has lost the overview
+- After `@ai-visibility-setup`, before `@content-write` per article
+- Quarterly strategy refresh
+- Before an investment conversation ("what is our AI content strategy?")
+
+Do not use when:
+- <10 prompts (not enough mass for real zones)
+- Prompts aren't split into Awareness / Consideration / Decision / Retention yet (run `@ai-visibility-setup` first)
 
 ---
 
-## Wann einsetzen
+## Pipeline
 
-- Peec-Projekt hat ≥ 20 Prompts und das Team verliert den Überblick
-- Nach einem `@ai-visibility-setup`-Lauf, bevor `@content-write` pro Artikel gestartet wird
-- Quartalsweise als Strategie-Refresh, wenn neue Prompts + Pain-Points dazukommen
-- Vor einem Investment-Gespräch („Was ist unsere AI-Content-Strategie?")
-
-Nicht einsetzen wenn:
-- < 10 Prompts (zu wenig Masse für echte Zonen)
-- Prompts sind noch nicht getrennt in Awareness/Consideration/Decision/Retention (dann erst `@ai-visibility-setup` laufen)
-
----
-
-## Eingaben
-
-- **Pflicht:** Peec `project_id`
-- **Optional:** `date_range` (Default letzte 30 Tage — für Visibility + Retrieval-Zahlen)
-- **Optional:** `target_zones` (Default 4-8 Zonen — der Skill wählt selbst die Auflösung)
-- **Optional:** `focus_funnel_stage` — wenn du nur EINE Stufe clustern willst
-
----
-
-## Ablauf
-
-### 1. Prompt-Inventar + Visibility-Lage ziehen
+### 1. Pull prompt inventory + visibility state
 
 ```
-mcp__peec-ai__list_prompts(project_id)                          # Prompt-Text + Topic + Tags
+mcp__peec-ai__list_prompts(project_id)
 mcp__peec-ai__get_brand_report(
-    project_id,
-    start_date, end_date,
-    dimensions: ["prompt_id"],
-    filters: [{field: "brand_id", operator: "in", values: [<own_brand_id>]}]
-)                                                                # Visibility pro Prompt für die eigene Marke
+  project_id, start_date, end_date,
+  dimensions=["prompt_id"],
+  filters=[{field: "brand_id", operator: "in", values: [own_brand_id]}]
+)
 mcp__peec-ai__get_url_report(
-    project_id,
-    start_date, end_date,
-    dimensions: ["prompt_id"],
-    filters: [{field: "gap", operator: "gt", value: 0}]
-)                                                                # Gap-Signal pro Prompt
-```
-
-Merge in eine einzige Prompt-Tabelle mit Spalten:
-`prompt_id | text | funnel_stage | topic | tags | own_visibility | gap_size | top_competitor_url | top_competitor_classification`
-
-### 2. Dimensions-Scoring (3 Achsen pro Prompt)
-
-Pro Prompt drei numerische Signale:
-
-- **Intent-Density** (0-1): wie stark überlappt der Prompt semantisch mit anderen Prompts derselben Funnel-Stufe?
-  - Verwende Embedding-Cosine (z. B. OpenAI `text-embedding-3-small` oder `mcp__visiblyai__classify_keywords` für regex-basierte Topics)
-  - Hoch = Prompt ist ein "Zentrum einer Cluster-Region"
-
-- **Visibility-Gap** (0-1): `1 - own_visibility`, gewichtet mit `gap_size / max_gap_size_in_project`
-  - Hoch = dort ist viel zu holen
-
-- **Demand-Density** (0-1): gibt es Reddit/Forum-Threads, die zu diesem Prompt matchen?
-  - Aus Peec `get_url_report` mit `classification=DISCUSSION`: zähle wie viele Thread-URLs in den Chat-Sources für diesen Prompt auftauchten
-  - Hoch = echte Käufer stellen die Frage wirklich
-
-**Score pro Prompt:** `intent_density × visibility_gap × demand_density` (multiplikativ, weil alle drei Achsen nötig sind).
-
-### 3. Clustering (embedding-basiert, nicht regex-basiert)
-
-Zwei Optionen je nach Verfügbarkeit:
-
-**A. Visibly AI `query_fanout` als semantische Brücke** (ab v0.6.0):
-
-```
-Für jeden Prompt mit Score > Median:
-    mcp__visiblyai__query_fanout(url=<own_domain>, keyword=<prompt_keyword>, language=<lang>)
-    → fanout_queries[] wird zum semantischen Fingerabdruck des Prompts
-```
-
-Zwei Prompts gehören in dieselbe Zone, wenn ihre Fan-Out-Queries ≥ 40% Overlap haben.
-
-**B. Fallback — Claude-basiertes Intent-Clustering:**
-
-Claude direkt instruieren, die Prompt-Liste in N strategische Zonen zu teilen. Eingabe-Prompt-Skelett:
-
-```
-Gegeben diese <N> Prompts mit ihren Metadaten (Funnel-Stage, Tags, Visibility-Gap, 
-Demand-Signal), gruppiere sie in 4-8 strategische Content-Zonen nach folgenden Kriterien:
-
-1. Gleiche Kauf-Entscheidungsfrage (nicht nur ähnliche Keywords)
-2. Gleiche Funnel-Stufe (oder angrenzende)
-3. Geteiltes Demand-Signal (gleiche Pain-Points aus Forum-Daten)
-4. Gemeinsamer struktureller Hebel (gleicher Typ Konkurrent den wir schlagen können)
-
-Für jede Zone: Name, 2-Satz-Thesis, Prompt-IDs, gemeinsamer Konkurrenten-Schwachpunkt, 
-eine einzige „Mach genau das jetzt"-Aktion.
-```
-
-### 4. Zonen validieren
-
-Jede Kandidaten-Zone muss vier Checks bestehen:
-
-1. **Kohärenz-Check:** ≥ 3 Prompts mit ≥ 0.4 embedding-similarity zum Zone-Zentroid
-2. **Funnel-Check:** maximal 1 Funnel-Stufe Spannweite (Awareness + Consideration ok, Awareness + Decision nicht)
-3. **Gap-Check:** durchschnittlicher `visibility_gap` der Zone > 0.3
-4. **Uniqueness-Check:** jede Zone hat einen Konkurrenten-Typ, der NICHT von einer anderen Zone gewonnen wird
-
-Zonen, die scheitern, werden zu ihrem nächsten Nachbar gemerged oder gedroppt.
-
-### 5. Pro Zone: strategische Komponenten extrahieren
-
-Pro valide Zone 6 Komponenten erzeugen:
-
-| Komponente | Quelle |
-|---|---|
-| **Zone-Name** (max 40 Z.) | Claude synthesisiert aus den Prompts |
-| **Thesis** (2 Sätze) | Warum diese Zone existiert + warum du hier gewinnst |
-| **Funnel-Spannweite** | TOFU / MOFU / BOFU / Retention |
-| **Top-5 Peec-Prompts** | sortiert nach dem kombinierten Score |
-| **Strukturelle Schwäche der Konkurrenz** | aus `peec-content-intel` Competitor-Analysis: was fehlt bei allen Konkurrenten in dieser Zone |
-| **One-Move-Action** | eine konkrete, direkt ausführbare Aktion — kein „Analysiere X", sondern „Schreibe Artikel Y mit Struktur Z und pitche ihn bei Z1, Z2" |
-
-### 6. Zonen-Ranking + Output
-
-Zonen nach **potential_impact** sortieren:
-
-```
-potential_impact = sum(prompts.visibility_gap × prompts.demand_density × funnel_value_weight)
-
-wobei:
-  funnel_value_weight = {Awareness: 0.6, Consideration: 1.0, Decision: 1.5, Retention: 1.2}
-```
-
-Output-Format (Markdown, direkt in einen Notion-/Slite-Brief kopierbar):
-
-```markdown
-# Content-Zonen für <Projekt-Name> (Stand YYYY-MM-DD)
-
-## Zone 1 (Score 0.85): <Name>
-
-**Thesis:** <2 Sätze>
-**Funnel:** Consideration → Decision
-**Prompts:** 7 Peec-Prompts (siehe Appendix A)
-
-**Strukturelle Schwäche der Konkurrenz:**
-- Keine der Top-5-Konkurrenz-URLs adressiert <Thema X>
-- 4 von 5 schweigen über <Preis / Retainer / Methode>
-
-**ONE MOVE JETZT:**
-> Schreibe einen HOW-TO-GUIDE mit Title "<konkret>", H2-Gliederung <konkret>,
-> publiziere als `/blog/<slug>`, pitche danach innerhalb von 7 Tagen bei
-> <Domain 1 aus get_actions>, <Domain 2>, und beantworte <Reddit-URL>.
-
-**Success-Metrik (zu messen nach 6 Wochen):**
-Peec-Visibility für die 7 Prompts von durchschnittlich X% → Y%.
-
----
-
-## Zone 2 (Score 0.78): ...
-```
-
-### 7. Persistence + Next-Run-Hook
-
-Wenn `mcp__peec-ai__create_tag` verfügbar: pro Zone einen Tag in Peec anlegen (z. B. `zone:retainer-decision`) und alle Prompts der Zone damit taggen. Das macht die Zone später messbar:
-
-```
-mcp__peec-ai__get_brand_report(
-    project_id, start_date, end_date,
-    filters: [{field: "tag_id", operator: "in", values: [<zone_tag_id>]}]
+  project_id, start_date, end_date,
+  dimensions=["prompt_id"],
+  filters=[{field: "gap", operator: "gt", value: 0}]
 )
 ```
 
-Das ist der Hook, den `growth-loop-reporter` später braucht, um Zone-Performance über Zeit zu messen.
+Merge into one table:
+`prompt_id | text | funnel_stage | topic | tags | own_visibility | gap_size | top_competitor_url | top_competitor_class`
 
----
+### 2. Score each prompt on three axes
 
-## Quick Command Reference
+- **Intent density** (0–1): semantic overlap with other prompts in the same funnel stage. Compute via embedding cosine (e.g. `text-embedding-3-small`) or `mcp__visiblyai__classify_keywords` as a regex-based fallback.
+- **Visibility gap** (0–1): `1 − own_visibility`, weighted by `gap_size / max_gap_size_in_project`.
+- **Demand density** (0–1): count of `classification=DISCUSSION` source URLs for this prompt in `get_url_report`. High = real buyers are asking.
 
-| Schritt | Tool |
+**Combined score** = `intent_density × visibility_gap × demand_density` (multiplicative — all three must be non-zero).
+
+### 3. Cluster (embedding-based, not regex)
+
+**Primary — `mcp__visiblyai__query_fanout` as semantic bridge** (≥v0.6.0):
+
+```
+for each prompt with score > median:
+  mcp__visiblyai__query_fanout(url=own_domain, keyword=prompt_keyword, language=lang)
+  → fanout_queries[] becomes the semantic fingerprint
+```
+
+Two prompts go in the same zone when their fan-out queries overlap ≥40%.
+
+**Fallback — direct LLM instruction:**
+
+```
+Given these <N> prompts with metadata (funnel stage, tags, visibility gap,
+demand signal), group them into 4–8 strategic content zones by:
+
+1. Same buying decision question (not merely similar keywords)
+2. Same funnel stage (or adjacent)
+3. Shared demand signal (same pain points from forum data)
+4. Shared structural leverage (same competitor type we can beat)
+
+For each zone: name, 2-sentence thesis, prompt_ids, shared competitor weakness,
+one concrete "do exactly this now" action.
+```
+
+### 4. Validate each candidate zone
+
+Four checks, all must pass:
+
+1. **Coherence** — ≥3 prompts with ≥0.4 embedding similarity to zone centroid
+2. **Funnel** — max 1 funnel stage of spread (Awareness + Consideration ok; Awareness + Decision not)
+3. **Gap** — average `visibility_gap` of zone > 0.3
+4. **Uniqueness** — each zone has a competitor type not won by another zone
+
+Zones that fail get merged to nearest neighbor or dropped.
+
+### 5. Extract 6 components per valid zone
+
+| Component | Source |
 |---|---|
-| Prompts + Topics + Tags laden | `mcp__peec-ai__list_prompts` / `list_topics` / `list_tags` |
-| Visibility pro Prompt | `mcp__peec-ai__get_brand_report(dimensions=["prompt_id"])` |
-| Gap pro Prompt | `mcp__peec-ai__get_url_report(filters: gap>0)` |
-| Semantische Cluster-Signale | `mcp__visiblyai__query_fanout` oder `classify_keywords` |
-| Pain-Signal-Density | `mcp__peec-ai__get_url_content` auf Reddit-Threads |
-| Zone als Tag persistieren | `mcp__peec-ai__create_tag` + `update_prompt` |
+| **Name** (≤40 chars) | synthesize from prompts |
+| **Thesis** (2 sentences) | why this zone exists + why you win here |
+| **Funnel span** | TOFU / MOFU / BOFU / Retention |
+| **Top 5 prompts** | sorted by combined score |
+| **Competitor structural weakness** | from `peec-content-intel`: what's missing across all competitors in this zone |
+| **One-move action** | concrete verb, concrete artifact, concrete channel — no "analyze X", instead "write article Y with structure Z and pitch at Z1, Z2" |
+
+### 6. Rank zones by potential impact
+
+```
+potential_impact = sum(prompts.visibility_gap × prompts.demand_density × funnel_weight)
+
+funnel_weight = {Awareness: 0.6, Consideration: 1.0, Decision: 1.5, Retention: 1.2}
+```
+
+### 7. Persist zones as Peec tags
+
+For each validated zone:
+
+```
+mcp__peec-ai__create_tag(project_id, name="zone:<slug>", color="<color>")
+for each prompt in zone:
+  mcp__peec-ai__update_prompt(project_id, prompt_id, tag_ids=[..., zone_tag_id])
+```
+
+This is the hook `growth-loop-reporter` uses to track zone performance over time.
 
 ---
 
-## Output-Qualitäts-Kriterien (selbst-check vor Rückgabe)
+## Output schema
 
-Eine Zonen-Map ist NUR dann fertig, wenn:
+```markdown
+# Content zones for <project> (<YYYY-MM-DD>)
 
-1. **Jede Zone hat eine One-Move-Action.** Kein „Analysiere", „Prüfe", „Erwäge" — es muss ein konkretes, ausführbares Verb stehen.
-2. **Jede Zone hat einen strukturellen Angriffspunkt.** Nicht „Konkurrenten haben schwachen Content" — sondern „Konkurrent X fehlt Preisangabe, Konkurrent Y fehlt FAQ-Block".
-3. **Jede Zone ist messbar.** Ein Peec-Tag oder eine explizite Liste von Prompt-IDs, deren Visibility in 4-8 Wochen gemessen wird.
-4. **Maximal 8 Zonen.** Wenn der Algorithmus 12 liefert, werden die schwächsten 4 gemerged oder gedroppt — Fokus gewinnt.
+## Zone 1 (score 0.85): <Name>
+
+**Thesis:** <2 sentences>
+**Funnel:** Consideration → Decision
+**Prompts:** 7 (see appendix A)
+
+**Competitor weakness:**
+- None of the top-5 competitor URLs address <topic X>
+- 4 of 5 say nothing about <pricing / retainer / methodology>
+
+**ONE MOVE NOW:**
+> Write a HOW-TO-GUIDE, title "<concrete>", H2 outline <concrete>,
+> publish at `/blog/<slug>`, then within 7 days pitch at
+> <domain 1 from get_actions>, <domain 2>, and answer <reddit URL>.
+
+**Success metric (measure after 6 weeks):**
+Peec visibility across the 7 prompts: avg X% → Y%.
 
 ---
 
-## Häufige Fehler
+## Zone 2 (score 0.78): ...
+```
 
-- **Keyword-Cluster statt Intent-Cluster:** „Neuro-SEO Blog" + „Neuro-SEO Shop" zu einem Cluster zusammenziehen, obwohl sie verschiedene Funnel-Stufen + Käufer adressieren.
-- **Alle Zonen sind Awareness:** dann fehlt der Funnel-Check. Dezidierter Decision-Cluster ist oft wertvoller als fünf Awareness-Cluster.
-- **Zonen ohne Angriffspunkt:** „Diese Zone ist wichtig" reicht nicht. Was machen die Konkurrenten falsch? Wenn man nicht antworten kann, ist die Zone keine.
-- **Zu viele Zonen:** 12 Zonen = 12 halb-bearbeitete Themen. 5 Zonen = 5 Themen, in denen du gewinnst.
+---
+
+## Quick reference
+
+| Step | Tool |
+|---|---|
+| Load prompts / topics / tags | `mcp__peec-ai__list_prompts` / `list_topics` / `list_tags` |
+| Visibility per prompt | `mcp__peec-ai__get_brand_report(dimensions=["prompt_id"])` |
+| Gap per prompt | `mcp__peec-ai__get_url_report(filters: gap>0)` |
+| Semantic cluster signal | `mcp__visiblyai__query_fanout` or `classify_keywords` |
+| Pain density | `mcp__peec-ai__get_url_content` on reddit threads |
+| Persist zone | `mcp__peec-ai__create_tag` + `update_prompt` |
+
+---
+
+## Done criteria (self-check before returning)
+
+A zone map is only complete when:
+
+1. Every zone has a one-move action with a concrete verb
+2. Every zone has a structural competitor weakness (not "weak content" — "competitor X lacks pricing, competitor Y lacks FAQ block")
+3. Every zone is measurable (Peec tag exists, prompt_ids listed)
+4. ≤8 zones total — if the algorithm returns 12, merge or drop the weakest 4
+
+---
+
+## Guardrails (do not do these)
+
+- Do not cluster by keyword — "Neuro-SEO Blog" + "Neuro-SEO Shop" address different funnels and different buyers
+- Do not ship a zone map where all zones are Awareness — Decision coverage is often more valuable than five Awareness clusters
+- Do not create a zone without a named competitor weakness — if you can't name what they do wrong, the zone isn't real
+- Do not return more than 8 zones — 12 zones means 12 half-finished topics; 5 zones means 5 topics you win
+- Do not skip the tag persistence step — without tags, `growth-loop-reporter` has nothing to attribute against

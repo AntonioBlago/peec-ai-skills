@@ -6,9 +6,9 @@ These skills turn a freshly-invoked Peec AI project into an operator-ready setup
 
 ---
 
-## Skill system (5 skills + 1 orchestrator)
+## Skill system (6 skills + 1 orchestrator)
 
-Not a feature list — a **closed growth loop**. Every skill has a specific job, and the orchestrator (`ai-growth-agent`) decides which one runs next.
+Not a feature list — a **closed growth loop** with a cross-project memory layer underneath. Every skill has a specific job; the orchestrator (`ai-growth-agent`) decides which one runs next; `skillmind-learner` lifts lessons out of one project into priors for the next.
 
 ```
      ┌────────────────────────────────────────────────────────┐
@@ -34,6 +34,13 @@ Not a feature list — a **closed growth loop**. Every skill has a specific job,
      │    next moves)                                         │
      │                                                        │
      └────────→ feeds back into UNDERSTAND ───────────────────┘
+                             │
+                             ▼
+     ┌────────────────────────────────────────────────────────┐
+     │  CROSS-PROJECT MEMORY     skillmind-learner            │
+     │  (patterns, priors)       read: priors for next loop   │
+     │                           write: patterns after lift   │
+     └────────────────────────────────────────────────────────┘
 ```
 
 | Skill | What it does | Credits | When to trigger |
@@ -43,9 +50,10 @@ Not a feature list — a **closed growth loop**. Every skill has a specific job,
 | [`content-cluster-builder`](skills/content-cluster-builder/SKILL.md) | Turns a flat Peec prompt set into **strategic topic zones** — clustered by intent × funnel stage × visibility gap × demand signal. Produces 4-8 zones, each with a concrete "one move now" action and a measurable success metric. Persists zones as Peec tags for later attribution. | ~5–15 cr | "I have 20+ prompts, give me a content architecture, not a calendar" |
 | [`citation-outreach`](skills/citation-outreach/SKILL.md) | Converts Peec's `get_actions` + forum/UGC discovery into a **prioritized outreach pipeline**: contact extraction, pitch templates per channel type (editorial / Reddit / Gutefrage / YouTube), tracker file, citation-gain measurement. 5 pitches/week cap by default. | free | "Content is shipped — now I need external citations" |
 | [`growth-loop-reporter`](skills/growth-loop-reporter/SKILL.md) | Weekly/monthly **loop-closer**: measures visibility delta per prompt/zone, attributes it to specific content + outreach investments, detects winning patterns, outputs a ≤ 400-word narrative with 3 next-actions and at least 1 "stop doing". Persists learnings for the next cycle. | free | Weekly ritual or after any major action |
-| [`ai-growth-agent`](skills/ai-growth-agent/SKILL.md) **(orchestrator)** | The decision-making layer above the other 5. Reads project state + last learnings, scans gaps, picks **one** next move, hands off to the right skill with parameters pre-filled. Tells you "do exactly this now" instead of "here is a dashboard". | free | "What should I work on this week?" |
+| [`skillmind-learner`](skills/skillmind-learner/SKILL.md) | **Cross-project memory layer.** After a Peec skill produces a measurable outcome, extracts 1–3 transferable patterns (causal, falsifiable, evidence-backed) and persists them to SkillMind. On the next orchestrator run, recalls matching patterns as priors — lessons from project A inform decisions on project B. | free | After `growth-loop-reporter` closes a cycle, or when a pitch / brief / zone lift is measured |
+| [`ai-growth-agent`](skills/ai-growth-agent/SKILL.md) **(orchestrator)** | The decision-making layer above the other 6. Reads project state + last learnings + SkillMind priors, scans gaps, picks **one** next move, hands off to the right skill with parameters pre-filled. Tells you "do exactly this now" instead of "here is a dashboard". | free | "What should I work on this week?" |
 
-All skills are **user-invocable** — Claude Code triggers them automatically when the conversation matches, and users can invoke them explicitly with `/ai-visibility-setup`, `/peec-content-intel`, `/content-cluster-builder`, `/citation-outreach`, `/growth-loop-reporter`, or `/ai-growth-agent`.
+All skills are **user-invocable** — Claude Code triggers them automatically when the conversation matches, and users can invoke them explicitly with `/ai-visibility-setup`, `/peec-content-intel`, `/content-cluster-builder`, `/citation-outreach`, `/growth-loop-reporter`, `/skillmind-learner`, or `/ai-growth-agent`.
 
 ---
 
@@ -56,12 +64,58 @@ All skills are **user-invocable** — Claude Code triggers them automatically wh
 - Peec AI MCP server connected — [official docs](https://app.peec.ai) (provides `mcp__peec-ai__*` tools)
 
 **Optional but strongly recommended:**
-- Visibly AI MCP server connected — [`visiblyai-mcp-server`](https://pypi.org/project/visiblyai-mcp-server/) **≥ v0.6.0** (provides GSC/GA4 read-through, backlinks, onpage-analysis, and — since v0.6.0 — the `query_fanout` coverage analyzer)
 
-Install the Visibly AI MCP locally:
-```bash
-pip install "visiblyai-mcp-server>=0.6.0"
+### Visibly AI — hosted MCP (zero install)
+
+Visibly AI is a **remote MCP server** — no pip install required. Just add the connection to your Claude Code `settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "visiblyai": {
+      "type": "http",
+      "url": "https://mcp.visibly-ai.com/mcp",
+      "headers": {
+        "Authorization": "Bearer lc_your_key"
+      }
+    }
+  }
+}
 ```
+
+Get your API key under Account → API Keys. Without the `Authorization` header, only the 8 free tools are available. Full developer docs: [antonioblago.com/de/entwickler/mcp](https://www.antonioblago.com/de/entwickler/mcp).
+
+Provides: GSC / GA4 read-through, backlinks, onpage analysis, `classify_keywords`, and — since v0.6.0 — the `query_fanout` coverage analyzer.
+
+### SkillMind — local MCP (pip install)
+
+SkillMind is a **local MCP server** that provides the cross-project memory layer used by `skillmind-learner`. Install:
+
+```bash
+pip install "skillmind[pinecone,mcp,youtube]"
+# or for everything:
+pip install "skillmind[all]"
+```
+
+Then add to Claude Code `settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "skillmind": {
+      "command": "python",
+      "args": ["-m", "skillmind.mcp.server"],
+      "env": {
+        "PINECONE_API_KEY": "your-pinecone-key",
+        "SKILLMIND_BACKEND": "pinecone",
+        "ANTHROPIC_API_KEY": "your-anthropic-key"
+      }
+    }
+  }
+}
+```
+
+Credentials can also live in a `.env` file in your project root instead of the `env` block. Repo: [github.com/AntonioBlago/skillmind](https://github.com/AntonioBlago/skillmind).
 
 ### Tool matrix
 
@@ -85,38 +139,35 @@ pip install "visiblyai-mcp-server>=0.6.0"
 
 The skills work even when pieces are missing:
 
-- **Without Visibly AI**: both skills still do the Peec-side setup, competitor discovery from chats, Reddit/forum mining via Peec's scraped index, and taxonomy setup. They skip: GSC keyword mapping (Phase 4 of visibility-setup) and coverage analysis (Phase 2 of content-intel). The content brief is still generated, just without the depth/coverage scores.
-- **Without `query_fanout` (Visibly MCP < 0.6.0)**: the content-intel skill falls back to an inline Claude-generated 6-axis heuristic (synonym, decision, comparison, problem, long-tail, forum). Coverage matching is skipped.
+- **Without Visibly AI**: the skills still do the Peec-side setup, competitor discovery from chats, Reddit / forum mining via Peec's scraped index, and taxonomy setup. They skip: GSC keyword mapping (Phase 4 of visibility-setup) and coverage analysis (Phase 2 of content-intel). The content brief is still generated, just without depth / coverage scores.
+- **Without `query_fanout` (Visibly MCP < 0.6.0)**: the content-intel skill falls back to an inline 6-axis heuristic (synonym, decision, comparison, problem, long-tail, forum). Coverage matching is skipped.
 - **Without `classify_keywords`**: funnel-stage detection drops to keyword pattern matching inside the SKILL.md logic.
+- **Without SkillMind**: `skillmind-learner` falls back to appending patterns to `<project>/growth_loop/patterns.md` and flags the skip. The orchestrator skips the cross-project `recall` call in Phase 1 — patterns are a bonus prior, not a requirement.
 
 ---
 
 ## Install
 
-### Option A — Global install (affects all Claude Code projects)
+The repo ships with `claude-peec-ai.sh` — a single script that installs all 7 skills into `~/.claude/skills/` (or a target you choose). Symlink by default; `git pull` in the repo then updates every installed skill in place.
 
 ```bash
 git clone https://github.com/AntonioBlago/peec-ai-skills.git ~/peec-ai-skills
-
-# macOS / Linux
-cp -r ~/peec-ai-skills/skills/* ~/.claude/skills/
-
-# Windows (Git Bash / WSL)
-cp -r ~/peec-ai-skills/skills/* "$USERPROFILE/.claude/skills/"
+cd ~/peec-ai-skills
+./claude-peec-ai.sh                           # symlink all 7 skills into ~/.claude/skills/
 ```
 
-### Option B — Symlinked (follows updates from `git pull`)
+Flags:
 
 ```bash
-git clone https://github.com/AntonioBlago/peec-ai-skills.git ~/peec-ai-skills
-cd ~/.claude/skills
-ln -s ~/peec-ai-skills/skills/ai-visibility-setup ai-visibility-setup
-ln -s ~/peec-ai-skills/skills/peec-content-intel peec-content-intel
+./claude-peec-ai.sh --copy                    # copy instead of symlink (no git-pull updates)
+./claude-peec-ai.sh --target ./.claude        # per-project install (project-local .claude/)
+./claude-peec-ai.sh --force                   # overwrite existing skill dirs
+./claude-peec-ai.sh --dry-run                 # preview, no filesystem changes
+./claude-peec-ai.sh --uninstall               # remove the 7 skill entries
+./claude-peec-ai.sh --only skillmind-learner,ai-growth-agent   # partial install
 ```
 
-### Option C — Per-project (only this project)
-
-Clone into the project's `.claude/skills/` directory instead of `~/.claude/skills/`.
+Symlink mode on Windows needs either Developer Mode or admin rights; the script falls back to copy automatically if the symlink call fails. On WSL / Git Bash it usually just works.
 
 ### Verify
 
@@ -159,7 +210,8 @@ Both skills reference MCP tools that must exist in your Claude Code environment:
 | Tool family | Provider | Example calls used by these skills |
 |---|---|---|
 | `mcp__peec-ai__*` | Peec AI MCP | `list_projects`, `get_url_report`, `get_chat`, `list_chats`, `get_url_content`, `create_brand`, `create_prompt`, `list_tags` |
-| `mcp__visiblyai__*` | Visibly AI MCP (optional) | `get_google_connections`, `query_search_console`, `get_keywords`, `get_backlinks`, `onpage_analysis`, `classify_keywords`, `query_fanout` |
+| `mcp__visiblyai__*` | Visibly AI MCP (hosted, optional) | `get_google_connections`, `query_search_console`, `get_keywords`, `get_backlinks`, `onpage_analysis`, `classify_keywords`, `query_fanout` |
+| `mcp__skillmind__*` | SkillMind MCP (local, optional) | `add_pattern`, `remember`, `recall`, `list_patterns`, `update_memory`, `consolidate`, `export_obsidian` |
 | Built-in | Claude Code | `WebSearch`, `WebFetch`, `Read`, `Write`, `Edit`, `Bash` |
 
 If any MCP tool is missing when a skill runs, the skill explicitly states which step is being skipped and continues with the remaining ones.

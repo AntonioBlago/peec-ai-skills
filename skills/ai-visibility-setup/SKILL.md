@@ -1,224 +1,228 @@
 ---
 name: ai-visibility-setup
-description: End-to-end Peec AI project setup — competitor discovery, customer-journey prompt design, topic/tag taxonomy, GSC-based keyword mapping, forum pain-point mining (Reddit, Gutefrage, t3n, OMR), reporting. Use when the user wants to set up, restructure, or audit a Peec AI project for their own brand or a client. Covers the full funnel (Awareness → Consideration → Decision → Retention) and ensures competitors, prompts, and tags reflect the actual offer and real buyer language.
+description: End-to-end Peec AI project setup — competitor discovery from real AI chats, customer-journey prompt design across Awareness → Consideration → Decision → Retention, topic/tag taxonomy, GSC-based keyword mapping, forum pain-point mining (Reddit, Gutefrage, t3n, OMR), and a categorized executable backlog. Use when the user wants to set up, restructure, or audit a Peec AI project for their own brand or a client. 9 phases, full funnel coverage, real buyer language.
 user-invocable: true
 ---
 
-# AI Visibility Setup — Peec AI Workflow
+# AI Visibility Setup
 
-Complete workflow for setting up or restructuring a Peec AI project so that brand visibility, competitor comparisons, and prompt coverage actually match the client's offer. Combines Peec MCP, Visibly AI (GSC/GA4), and web research.
+## Role
+Take a Peec AI project from empty (or broken) to operator-ready: correct competitors, full-funnel prompts, coherent taxonomy, GSC keyword mapping, forum-mined buyer language, and a categorized executable backlog the client can run for the next 2 weeks.
 
-**When to trigger:**
-- "Set up Peec for [client]"
+## Input
+- `project_id` (resolved via `mcp__peec-ai__list_projects`)
+- Optional: `market` (default `DE`), `offer_keywords` (retainer, monthly, etc.), `own_domain`
+- Optional: `scope` — `full` | `competitors_only` | `prompts_only` | `taxonomy_only` (default `full`)
+
+## Output
+A setup report with: before/after counts, funnel distribution (e.g. 5/5/5/5), the single **hero prompt** to win first, the refresh timeline (24h for fresh data), a categorized P0/P1/P2 backlog, and any user-preference memories saved. No dashboards.
+
+## When to use
+- "Set up Peec for <client>"
 - "My Peec competitors are wrong / not real competitors"
 - "Design prompts for my customer journey"
 - "Map GSC keywords to my Peec prompts"
-- "Restructure Peec topics/tags"
-- Any audit of existing AI visibility tracking.
+- "Restructure Peec topics / tags"
+- Audit of an existing AI-visibility tracking setup
 
-**Prerequisites:**
-- Peec AI MCP connected (`mcp__peec-ai__*` tools)
-- Visibly AI MCP connected (`mcp__visiblyai__*`) — only for GSC data, optional
-- GSC + GA4 connected inside Visibly AI (check with `get_google_connections`)
+## Prerequisites
+- Peec AI MCP connected (`mcp__peec-ai__*`)
+- Visibly AI MCP connected (`mcp__visiblyai__*`) — optional, only for GSC
+- GSC + GA4 connected inside Visibly AI (check via `get_google_connections`)
 
 ---
 
-## Phase 1 — Initial Audit (state of play)
+## Phase 1 — Initial audit
 
-Run these in parallel:
+Run in parallel:
 
 ```
-mcp__peec-ai__list_projects                          → pick project_id
-mcp__peec-ai__list_brands(project_id)                → current competitors
-mcp__peec-ai__list_prompts(project_id, limit=200)    → current prompts + tag_ids + topic_id
-mcp__peec-ai__list_topics(project_id)                → current topic taxonomy
-mcp__peec-ai__list_tags(project_id)                  → current tag taxonomy
+mcp__peec-ai__list_projects
+mcp__peec-ai__list_brands(project_id)         # current competitors
+mcp__peec-ai__list_prompts(project_id, limit=200)
+mcp__peec-ai__list_topics(project_id)
+mcp__peec-ai__list_tags(project_id)
 ```
 
 **Red flags to call out:**
-- Competitors list contains **SaaS tool brands** (SEMrush, Ahrefs, Sistrix, Moz, Ryte, Yoast, Screaming Frog, SurferSEO, Frase). If the client is a freelancer/consultant, these distort SoV and visibility — they aren't business competitors.
-- Prompts clustered only in one funnel stage (e.g. all MOFU "empfiehl" — no Awareness/Decision/Retention coverage).
-- Topics = theme only (e.g. "AI" / "SEO") → can't track funnel performance.
-- Tags = only Peec's default 4 (branded/non-branded/informational/transactional) → no offer-specific slicing possible.
+- Competitors list contains **SaaS tool brands** (SEMrush, Ahrefs, Sistrix, Moz, Ryte, Yoast, Screaming Frog, SurferSEO, Frase). For a freelancer / consultant project these distort SoV — they are not buyers' alternatives.
+- Prompts clustered in one funnel stage only (e.g. all MOFU "empfiehl" — no Awareness / Decision / Retention coverage).
+- Topics represent **themes only** (e.g. "AI" / "SEO") — can't track funnel performance.
+- Tags are only Peec's default 4 (branded / non-branded / informational / transactional) — no offer-specific slicing possible.
 
 ---
 
-## Phase 2 — Competitor Discovery (ground truth)
+## Phase 2 — Competitor discovery (ground truth)
 
 ### 2a. Extract from AI chats (authoritative)
 
-For each **losing prompt** (where the own brand has 0% visibility but competitors are present), pull actual chats:
+For each **losing prompt** (own brand 0% visibility, competitors present):
 
 ```
 mcp__peec-ai__list_chats(project_id, start_date, end_date, prompt_id=<losing_prompt>)
   → pick 1 chat per engine (chatgpt-scraper, perplexity-scraper, google-ai-overview-scraper)
 mcp__peec-ai__get_chat(project_id, chat_id)
-  → inspect messages[] for freelancer/consultant names; inspect sources[] for their domains
+  → inspect messages[] for freelancer / consultant names
+  → inspect sources[]  for their domains
 ```
 
-Extract: human names, domain names, and the sources the AI pulled. These are the **real** competitors LLMs recommend against you.
+Extract: human names, domain names, sources the AI pulled. These are the **real** competitors LLMs recommend against you.
 
 ### 2b. Supplement with web research
 
 ```
-WebSearch: "SEO Freelancer Deutschland [niche] 2026"
-WebSearch: "[niche] Freelancer Experte KI ChatGPT empfehlen"
+WebSearch("SEO Freelancer Deutschland <niche> 2026")
+WebSearch("<niche> Freelancer Experte KI ChatGPT empfehlen")
 ```
 
-Cross-check with the domain report — any domain already retrieving (`get_domain_report`) but not tracked as a brand is an **invisible competitor**:
+Cross-check against the domain report — any domain retrieving (`get_domain_report`) but not tracked as a brand is an **invisible competitor**:
 
 ```
 mcp__peec-ai__get_domain_report(project_id, start_date, end_date, limit=25)
-  → find domains with retrieved_percentage > 5% not yet in list_brands output
+  → find domains with retrieved_percentage > 5% not yet in list_brands
 ```
 
 ---
 
-## Phase 3 — Competitor Curation (mutation)
+## Phase 3 — Competitor curation (mutation)
 
 ### 3a. Add real competitors
 
-For each discovered freelancer/agency/brand, batch-call in parallel:
+Batch-call in parallel:
 
 ```
 mcp__peec-ai__create_brand(
   project_id,
-  name: "Human Name or Brand",
-  domains: ["their-domain.de"],
-  aliases: ["Alternate Spelling"]  // Umlaut ↔ ASCII variants, alias abbreviations
+  name="<Human name or brand>",
+  domains=["their-domain.de"],
+  aliases=["Alternate Spelling"]   # Umlaut ↔ ASCII variants, abbreviations
 )
 ```
 
 Categories to include:
 - **Direct positioning overlap** (e.g. KI-SEO, GEO, Neuro-SEO freelancers)
-- **Niche-specific freelancers** (e.g. E-Commerce/Shopify SEO)
-- **Local competitors** (same city/region)
-- **Micro-agencies** (5-20 person KI/GEO specialists)
+- **Niche-specific freelancers** (E-commerce / Shopify SEO)
+- **Local competitors** (same city / region)
+- **Micro-agencies** (5–20 person KI / GEO specialists)
 - **Invisible competitors** already appearing in the domain report
 
 ### 3b. Remove irrelevant competitors
 
-If the project is for a **solo freelancer** or **service business**, remove SaaS tool brands — they aren't buyers' alternatives:
+For solo freelancer / service-business projects, remove SaaS tool brands:
 
 ```
 mcp__peec-ai__delete_brand(project_id, brand_id)
 ```
 
-Tool brands to remove for a freelancer project: SEMrush, Ahrefs, Sistrix, Moz, Ryte, Yoast, Screaming Frog, SurferSEO, Frase, SE Ranking.
+Tool brands to remove: SEMrush, Ahrefs, Sistrix, Moz, Ryte, Yoast, Screaming Frog, SurferSEO, Frase, SE Ranking.
 
-**Note:** Deletion is soft. Also save a feedback memory noting the user's preference to track humans only (so future sessions don't re-suggest these).
+Deletion is soft. Also save a feedback memory noting "track humans only" so future sessions don't re-suggest these.
 
 ---
 
-## Phase 4 — Keyword & Intent Analysis (Visibly AI + GSC)
+## Phase 4 — Keyword & intent analysis (Visibly AI + GSC)
 
 ### 4a. Verify GSC connection
-
 ```
 mcp__visiblyai__get_google_connections()
-  → confirm the domain has a gsc_property and (ideally) a GA4 pairing
+  → confirm domain has a gsc_property and (ideally) a GA4 pairing
 ```
 
 ### 4b. Pull GSC keywords
-
 ```
 mcp__visiblyai__get_keywords(domain="example.com", limit=200, location="Germany")
-  → returns real click data, CTR, impressions, avg. position
+# or for finer control:
+mcp__visiblyai__query_search_console(dimension="query", days=28, country="deu", limit=500)
 ```
 
-Alternative: `mcp__visiblyai__query_search_console(dimension="query", days=28, country="deu", limit=500)` for finer control.
-
-### 4c. Classify intent gap
+### 4c. Classify intent
 
 Cluster keywords into:
-- **Informational (TOFU)** — "was ist", "wie funktioniert", "claude ohne anmeldung", ratgeber queries
+- **Informational (TOFU)** — "was ist", "wie funktioniert", "<tool> ohne anmeldung", ratgeber queries
 - **Brand** — client brand name + variations
 - **Commercial (MOFU)** — "beste", "vergleich", "Agentur vs Freelancer"
-- **Transactional (BOFU)** — "Kosten", "Preis", "buchen", "kontaktieren", "[service] + [location]"
+- **Transactional (BOFU)** — "Kosten", "Preis", "buchen", "kontaktieren", "<service> + <location>"
 
-**Frequent pattern:** the domain ranks well for **TOFU informational** queries (blog-driven traffic) but invisible for **commercial/transactional** queries — those are exactly the queries Peec prompts should test.
+**Frequent pattern:** domain ranks well for TOFU informational (blog traffic) but is invisible for commercial / transactional — those are exactly the queries Peec prompts should test.
 
 ### 4d. Map GSC keywords → Peec prompts
 
-For each top GSC keyword:
-- Does a Peec prompt exist that tests AI visibility for the same intent?
-- If not → flag as "prompt gap".
+For each top GSC keyword: does a Peec prompt exist that tests AI visibility for the same intent? If not, flag as "prompt gap".
 
 ---
 
-## Phase 5 — Pain Point Research (Reddit, Gutefrage, Foren)
+## Phase 5 — Forum pain-point mining
 
-Mine **verbatim buyer pain points** from public forums to turn them into Peec prompts that match real customer language (not sanitized marketing phrasing). These prompts also reveal what LLMs are pulling from forum UGC — and whether the client's brand surfaces in answers.
+Mine **verbatim buyer pain** from public forums → convert into Peec prompts that match real customer language (not sanitized marketing phrasing). These prompts also reveal what LLMs pull from UGC, and whether the brand surfaces in those answers.
 
-### 5a. Source forums
+### 5a. Sources
 
-**German-language (priority for DACH clients):**
-- **Reddit DE** — `r/de`, `r/Finanzen`, `r/kmu`, `r/selbststaendig`, `r/Unternehmer`, plus niche: `r/shopify`, `r/ecommerce`, `r/SEO`
-- **Gutefrage.net** — broadest consumer-intent DE Q&A; strong for commercial/transactional pain
-- **t3n forum** (`t3n.de/forum`) — DACH digital/business pros
-- **OMR forum** (`omr.com/de/forum`) — marketing/SEO operator pains
-- **gründerszene** comments / **deutsche-startups** — startup-side B2B pain
+**German (priority for DACH):**
+- Reddit DE — `r/de`, `r/Finanzen`, `r/kmu`, `r/selbststaendig`, `r/Unternehmer`; niche: `r/shopify`, `r/ecommerce`, `r/SEO`
+- Gutefrage.net — broadest DE consumer Q&A; strong for commercial / transactional pain
+- t3n forum (`t3n.de/forum`) — DACH digital / business pros
+- OMR forum (`omr.com/de/forum`) — marketing / SEO operator pain
+- gründerszene comments / deutsche-startups — B2B startup pain
 
 **Global / EN fallback:**
-- Reddit: `r/SEO`, `r/localseo`, `r/ecommerce`, `r/shopify`, `r/smallbusiness`, `r/entrepreneur`, niche subs per industry
-- Quora (`quora.com`)
-- Stack Exchange (Webmasters, Freelancing) for technical pains
+- Reddit: `r/SEO`, `r/localseo`, `r/ecommerce`, `r/shopify`, `r/smallbusiness`, `r/entrepreneur`
+- Quora
+- Stack Exchange (Webmasters, Freelancing) for technical pain
 
-**Video/social UGC (use WebFetch):**
-- YouTube comment sections on **competitor** videos (already surfaced in Peec's domain report as high-retrieval — e.g. Farbentour Online Marketing GmbH)
-- LinkedIn post comments on competitor articles (e.g. the pulse article Peec's `get_actions` recommends)
+**Video / social UGC (via WebFetch):**
+- YouTube comment sections under competitor videos surfaced in the domain report
+- LinkedIn post comments on competitor pulse articles (from `get_actions`)
 
 ### 5b. Query patterns
 
-Run these in parallel — each returns different pain angles:
+Run in parallel — different pain angles:
 
 ```
-WebSearch("site:reddit.com [offer-keyword] [problem-word]")
-  // problem-words: "funktioniert nicht", "erfahrungen", "lohnt sich", "hilfe", "enttäuscht"
-WebSearch("site:gutefrage.net [offer-keyword]")
-WebSearch("site:t3n.de/forum [niche-keyword]")
-WebSearch("site:omr.com [niche-keyword] frage")
-WebSearch("[offer-keyword] erfahrungen forum")
-WebSearch("[competitor-name] review reddit")
+WebSearch("site:reddit.com <offer-keyword> <problem-word>")
+# problem-words: "funktioniert nicht", "erfahrungen", "lohnt sich", "hilfe", "enttäuscht"
+WebSearch("site:gutefrage.net <offer-keyword>")
+WebSearch("site:t3n.de/forum <niche-keyword>")
+WebSearch("site:omr.com <niche-keyword> frage")
+WebSearch("<offer-keyword> erfahrungen forum")
+WebSearch("<competitor-name> review reddit")
 ```
 
-For a DACH SEO-retainer project, example queries:
+Example for a DACH SEO-retainer project:
 - `site:reddit.com SEO Freelancer erfahrungen`
 - `site:gutefrage.net SEO Berater lohnt sich`
 - `"Shopify SEO" "funktioniert nicht" forum`
 - `"KI SEO" reddit erfahrung`
 
-### 5c. Extract & inspect threads
-
-For each promising hit:
+### 5c. Extract threads
 
 ```
-WebFetch(url, "Extract the original question verbatim, plus the 3 most upvoted answers. Note frustrations, decision triggers, and brand/competitor mentions.")
+WebFetch(url, "Extract the original question verbatim, plus the 3 most upvoted answers.
+              Note frustrations, decision triggers, and brand / competitor mentions.")
 ```
 
-Pay attention to:
-- **Verbatim question wording** — buyer's natural language
+Signals to capture:
+- **Verbatim question wording** — the buyer's natural language
 - **Frustration markers** — "habe schon X ausprobiert", "keine Ergebnisse", "zu teuer", "bin überfordert"
 - **Decision triggers** — "was kostet X?", "wie lange dauert Y?", "reicht selbst machen?", "brauche ich Z?"
-- **Competitor mentions** — names, domains, verdicts (positive/negative)
-- **Thread recency** — prioritize threads from the last 12 months; older threads ≠ current AI training signal
+- **Competitor mentions** — names, domains, verdicts
+- **Thread recency** — prioritize last 12 months; older threads ≠ current AI training signal
 
-### 5d. Convert pain points → Peec prompts
+### 5d. Convert pain → Peec prompts
 
 Rules:
-1. **Keep the buyer's language** — do NOT rewrite to marketing-speak. "Lohnt sich ein SEO-Berater überhaupt?" stays; don't polish to "Welcher Nutzen bietet SEO-Beratung?"
+1. **Keep the buyer's language.** "Lohnt sich ein SEO-Berater überhaupt?" stays — do not polish to "Welcher Nutzen bietet SEO-Beratung?"
 2. **Map to funnel stage** by intent:
    - "Was ist / wie funktioniert / bin ich zu spät" → Awareness
    - "Freelancer vs Agentur / beste Option / welcher lohnt sich" → Consideration
    - "Was kostet / kann ich buchen / wen kontaktieren" → Decision
    - "Erfahrungen mit X / Fallstudien / funktioniert das wirklich" → Retention
-3. **Reject pure curiosity** — "Was ist KI?" without buying path. Only keep queries that plausibly lead to your offer.
-4. **Filter by business-model fit** — ask "would a buyer asking this become a retainer client / a one-shot client / product buyer?" If none → reject.
-5. **Max 200 chars** — tighten without losing the pain.
+3. **Reject pure curiosity.** "Was ist KI?" without buying path is out.
+4. **Business-model fit.** Ask: would a buyer asking this become a retainer / one-shot / product buyer? If no, reject.
+5. **≤200 chars** (Peec limit) — tighten without losing the pain.
 
 ### 5e. Tag for traceability
 
-When creating the prompt in Phase 7, also tag with a **`from-forum`** tag (create once: `create_tag(name="from-forum", color="slate")`). This lets you later filter reports to `tag_id=from-forum` and measure whether pain-point prompts outperform generic ones.
+When creating the prompt in Phase 7, also tag with **`from-forum`** (create once: `create_tag(name="from-forum", color="slate")`). Later you can filter reports to `tag_id=from-forum` and measure whether pain-point prompts outperform generic ones.
 
 ### 5f. Example transformations
 
@@ -230,321 +234,309 @@ When creating the prompt in Phase 7, also tag with a **`from-forum`** tag (creat
 | "SEO für Shopify mit ChatGPT – reicht das?" (r/shopify) | Reicht SEO für Shopify mit ChatGPT ohne zusätzlichen Berater aus? | Awareness | shopify, ai-seo, from-forum |
 | "Bin ich 2026 noch nicht zu spät für SEO?" (r/de) | Ist es 2026 noch sinnvoll, mit SEO zu starten? | Awareness | from-forum |
 
-### 5g. Secondary use: content briefing
+### 5g. Secondary use
 
-The extracted pain points are also **content topics** — feed them to the client for blog posts / LinkedIn pulses / YouTube scripts. Answering the pain point in owned content is the fastest way to **win** the corresponding Peec prompt in 6-12 weeks.
+Extracted pain points are also **content topics** — feed them to the client for blog posts / LinkedIn pulses / YouTube scripts. Answering the pain in owned content is the fastest way to **win** the corresponding Peec prompt in 6–12 weeks.
 
 ---
 
-## Phase 6 — Customer Journey Prompt Design
+## Phase 6 — Customer-journey prompt design
 
-Organize prompts across **4 funnel stages**:
+4 funnel stages:
 
-| Stage | Intent | Typical prompt shape | Example |
+| Stage | Intent | Typical shape | Example |
 |---|---|---|---|
-| 🟢 **Awareness** | Educate on category | "Was ist X?", "Wie funktioniert Y?", "Warum wird Z wichtiger?" | Was ist Neuro-SEO? |
-| 🟡 **Consideration** | Compare options | "Beste X", "Vergleiche Y", "X oder Y – was lohnt sich?" | Beste SEO-Freelancer E-Commerce |
-| 🔴 **Decision** | Ready to book | "Wer ist [Brand]?", "Was kostet X?", "[Service] gesucht" | Was kostet eine monatliche SEO-Retainer-Beratung? |
-| 🟣 **Retention** | Trust / proof | "Fallstudien", "Erfahrungen mit [Brand]", "Wer veröffentlicht X?" | Erfahrungen mit [Brand] Neuro-SEO System |
+| **Awareness** | educate on category | "Was ist X?", "Wie funktioniert Y?", "Warum wird Z wichtiger?" | Was ist Neuro-SEO? |
+| **Consideration** | compare options | "Beste X", "Vergleiche Y", "X oder Y – was lohnt sich?" | Beste SEO-Freelancer E-Commerce |
+| **Decision** | ready to book | "Wer ist <brand>?", "Was kostet X?", "<service> gesucht" | Was kostet eine monatliche SEO-Retainer-Beratung? |
+| **Retention** | trust / proof | "Fallstudien", "Erfahrungen mit <brand>", "Wer veröffentlicht X?" | Erfahrungen mit <brand> Neuro-SEO System |
 
-**Targeting 5 prompts per stage = 20 total** is the proven minimum for meaningful SoV tracking per stage.
+**Target 5 prompts per stage = 20 total.** Below this, per-stage SoV tracking is too noisy.
 
 ### Prompt quality criteria
 
 A retainer-worthy prompt:
-- Asks for **exactly what the client sells** (incorporate offer keywords: "Retainer", "monatlich", "System", "laufend")
-- Is **MOFU→BOFU intent** for decision prompts (not vague "what is")
-- Has **competitor weakness built in** (e.g. tool brands can't answer consultative queries; agencies lose on "persönlich"/"coach"; most competitors lose on the client's unique category)
-- German-language for DE market; language-match for other regions
-- < 200 chars (Peec limit)
+- Asks for **exactly what the client sells** (offer keywords: "Retainer", "monatlich", "System", "laufend")
+- Is **MOFU → BOFU intent** for Decision prompts (no vague "what is")
+- Has **competitor weakness built in** (tool brands can't answer consultative queries; agencies lose on "persönlich" / "coach"; generalists lose on the client's unique category)
+- German for DE market; language-match for other regions
+- ≤200 chars
 
-### ⭐ Pick the single most important prompt
+### Pick the hero prompt
 
-For any project, identify ONE prompt that:
+Identify ONE prompt that:
 1. Matches the offer verbatim
-2. Is BOFU-intent (buyer is near purchase)
+2. Is BOFU intent
 3. Has competitor weakness (tool brands, agencies, or generalists fail it)
 4. Uses the client's differentiator keywords
 
-This is the **hero prompt** to win first — track it weekly.
+This is the hero prompt — track weekly.
 
 ---
 
-## Phase 7 — Prompt Creation
+## Phase 7 — Prompt creation
 
-Batch-create via parallel calls:
+Batch in parallel:
 
 ```
 mcp__peec-ai__create_prompt(
   project_id,
-  text: "...",
-  country_code: "DE",
-  topic_id: <funnel-stage-topic-id>
+  text="...",
+  country_code="DE",
+  topic_id=<funnel-stage-topic-id>
 )
 ```
 
-After creation, prompts have `topic_id` but no tags — tagging happens in Phase 7.
+Created prompts have `topic_id` but no tags — tagging happens in Phase 8.
 
-**Credit caution:** Each prompt consumes daily run credits on Peec's TRIAL plan. For large sets (>20), consider creating in waves and reviewing coverage after 48h.
+**Credit caution:** Each prompt burns daily run credits on Peec TRIAL. For >20, create in waves and review coverage after 48h.
 
 ---
 
-## Phase 8 — Taxonomy Setup (topics + tags)
+## Phase 8 — Taxonomy setup (topics + tags)
 
-### 7a. Topics = Funnel Stages
+### 8a. Topics = funnel stages
 
 Create 4 topics:
 
 ```
-mcp__peec-ai__create_topic(project_id, name="Awareness", country_code="DE")
+mcp__peec-ai__create_topic(project_id, name="Awareness",     country_code="DE")
 mcp__peec-ai__create_topic(project_id, name="Consideration", country_code="DE")
-mcp__peec-ai__create_topic(project_id, name="Decision", country_code="DE")
-mcp__peec-ai__create_topic(project_id, name="Retention", country_code="DE")
+mcp__peec-ai__create_topic(project_id, name="Decision",      country_code="DE")
+mcp__peec-ai__create_topic(project_id, name="Retention",     country_code="DE")
 ```
 
-If the project already had theme-based topics (AI, SEO) — **rebuild**: move each prompt to its funnel topic via `update_prompt`, then `delete_topic` on the obsolete ones.
+If the project had theme-based topics (AI, SEO): **rebuild** — move each prompt to its funnel topic via `update_prompt`, then `delete_topic` the obsolete ones.
 
-### 7b. Tags — intent + theme
+### 8b. Tags = intent + theme
 
-Keep Peec's **standard 4 intent tags**: branded, non-branded, informational, transactional.
+Keep Peec's **standard intent tags**: branded, non-branded, informational, transactional.
 
-Add **theme tags** reflecting the offer:
+Add theme tags reflecting the offer:
 
 ```
-mcp__peec-ai__create_tag(project_id, name="retainer", color="orange")
-mcp__peec-ai__create_tag(project_id, name="e-commerce", color="purple")
-mcp__peec-ai__create_tag(project_id, name="shopify", color="green")
-mcp__peec-ai__create_tag(project_id, name="ai-seo", color="cyan")
-mcp__peec-ai__create_tag(project_id, name="neuro-seo", color="fuchsia")   // or client's proprietary term
-mcp__peec-ai__create_tag(project_id, name="coach", color="teal")
-mcp__peec-ai__create_tag(project_id, name="local", color="yellow")
-mcp__peec-ai__create_tag(project_id, name="brand-<name>", color="rose")
-mcp__peec-ai__create_tag(project_id, name="from-forum", color="slate")       // Phase 5 pain-point traceability
+mcp__peec-ai__create_tag(project_id, name="retainer",    color="orange")
+mcp__peec-ai__create_tag(project_id, name="e-commerce",  color="purple")
+mcp__peec-ai__create_tag(project_id, name="shopify",     color="green")
+mcp__peec-ai__create_tag(project_id, name="ai-seo",      color="cyan")
+mcp__peec-ai__create_tag(project_id, name="neuro-seo",   color="fuchsia")  # client's proprietary term
+mcp__peec-ai__create_tag(project_id, name="coach",       color="teal")
+mcp__peec-ai__create_tag(project_id, name="local",       color="yellow")
+mcp__peec-ai__create_tag(project_id, name="brand-<name>",color="rose")
+mcp__peec-ai__create_tag(project_id, name="from-forum",  color="slate")    # Phase 5 traceability
 ```
 
-### 7c. Assign every prompt
-
-For each prompt:
+### 8c. Assign every prompt
 
 ```
 mcp__peec-ai__update_prompt(
-  project_id,
-  prompt_id,
-  topic_id: <funnel stage>,
-  tag_ids: [
-    <intent>,              // transactional OR informational
-    <branding>,            // branded OR non-branded
-    <theme1>, <theme2>...  // retainer, e-commerce, etc.
+  project_id, prompt_id,
+  topic_id=<funnel stage>,
+  tag_ids=[
+    <intent>,         # transactional OR informational
+    <branding>,       # branded OR non-branded
+    <theme1>, <theme2>, ...
   ]
 )
 ```
 
-Rule of thumb:
+Default mapping:
 - Awareness → informational + non-branded
-- Consideration → transactional + non-branded (except explicit brand-Y comparisons)
-- Decision → transactional + (branded if mentioning client brand, else non-branded)
-- Retention → informational/transactional + branded for "Erfahrungen mit [Brand]"
+- Consideration → transactional + non-branded (unless explicit brand-Y comparison)
+- Decision → transactional + (branded if client brand named, else non-branded)
+- Retention → informational / transactional + branded for "Erfahrungen mit <brand>"
 
-### 7d. Clean up
+### 8d. Clean up
 
-Delete obsolete topics after all prompts have been moved:
-
+After every prompt has been moved:
 ```
 mcp__peec-ai__delete_topic(project_id, old_topic_id)
 ```
 
 ---
 
-## Phase 9 — Reporting & Actions
+## Phase 9 — Reporting & actions
 
-Wait ~24h after setup, then pull:
+Wait ~24h after setup. Then:
 
 ### Funnel visibility
-
 ```
 mcp__peec-ai__get_brand_report(
-  project_id,
-  start_date, end_date,
-  dimensions: ["topic_id"],
-  filters: [{ field: "brand_id", operator: "in", values: [own_brand_id] }]
+  project_id, start_date, end_date,
+  dimensions=["topic_id"],
+  filters=[{field: "brand_id", operator: "in", values: [own_brand_id]}]
 )
 ```
 
-Expose which funnel stage is weakest (usually Awareness if the category is client-invented, or Decision if brand discovery is poor).
+Usually exposes the weakest funnel stage — often Awareness if the category is client-invented, or Decision if brand discovery is poor.
 
 ### Hero prompt tracking
-
 ```
 mcp__peec-ai__get_brand_report(
   project_id, start_date, end_date,
-  filters: [{ field: "prompt_id", operator: "in", values: [<hero_prompt_id>] }],
-  dimensions: ["model_id"]
+  filters=[{field: "prompt_id", operator: "in", values: [<hero_prompt_id>]}],
+  dimensions=["model_id"]
 )
 ```
 
-Track the single ⭐ prompt's visibility per engine — this is the KPI to move.
-
 ### Theme SoV
-
 ```
 mcp__peec-ai__get_brand_report(
   project_id, start_date, end_date,
-  filters: [{ field: "tag_id", operator: "in", values: [<retainer_tag_id>] }],
-  dimensions: ["brand_id"]
+  filters=[{field: "tag_id", operator: "in", values: [<retainer_tag_id>]}],
+  dimensions=["brand_id"]
 )
 ```
 
 ### Opportunity actions
-
 ```
-mcp__peec-ai__get_actions(project_id, scope="overview", start_date, end_date)
-  → pick top 3 opportunity rows
+mcp__peec-ai__get_actions(project_id, scope="overview",  start_date, end_date)   # top 3 rows
 mcp__peec-ai__get_actions(project_id, scope="editorial", url_classification="ARTICLE", ...)
 mcp__peec-ai__get_actions(project_id, scope="ugc", domain="youtube.com", ...)
-  // also try reddit.com, linkedin.com
+# also try reddit.com, linkedin.com
 ```
 
-Deliver concrete outreach list + content-format guidance from actions' `text` column.
+Deliver as concrete outreach list + content-format guidance from the actions' `text` column.
 
 ---
 
-## Deliverable Structure
+## Deliverable structure
 
 At the end of a full setup, present:
 
-1. **Before/After table** — brand count, prompt count, topics, tags (then vs now)
-2. **Funnel prompt distribution** — 5/5/5/5 (or the actual numbers)
+1. **Before / after table** — brand count, prompt count, topics, tags (then vs now)
+2. **Funnel distribution** — e.g. 5/5/5/5
 3. **Hero prompt callout** — which single prompt to win first, and why
-4. **Refresh timeline** — "Rerun brand/domain reports in 48h"
-5. **ToDo / Improvement Backlog** — categorized task list (see next section)
-6. **Memory hygiene** — save any user preferences uncovered (e.g. "never track tool brands as competitors") to feedback memory
+4. **Refresh timeline** — "rerun brand / domain reports in 48h"
+5. **Categorized backlog** (below)
+6. **Memory hygiene** — save preferences uncovered (e.g. "never track tool brands") to feedback memory
 
 ---
 
-## ToDo / Improvement Backlog — Categorized Template
+## Executable backlog template
 
-Every setup should end with a concrete, categorized task list the client/user can execute. Structure output as seven categories. Each task = one line, prefixed with priority (P0 / P1 / P2) and estimated effort (S / M / L).
+Every setup ends with a **categorized task list** the client / user can run in the next 2 weeks. 7 categories. Each task = one line, prefixed with priority (P0 / P1 / P2) and effort (S / M / L).
 
-### 1. Content — Own Domain (pillar + offer pages)
-- **P0** — Create / optimize a **transactional hero page** for the offer (e.g. "[Offer] Retainer") with pricing bands, FAQ schema, CTAs
-- **P0** — Build a **category pillar page** for the client's unique term (e.g. "Was ist Neuro-SEO?") — targets Awareness prompts
-- **P1** — Case-study page per niche (Shopify / B2B / Local) — targets Retention prompts
-- **P1** — Comparison page ("Freelancer vs Agentur für [niche]") — targets Consideration
-- **P2** — Glossary / FAQ hub covering pain points mined in Phase 5
+### 1. Content — owned domain
+- **P0** — transactional hero page for the offer ("<offer> Retainer") with pricing bands, FAQ schema, CTAs
+- **P0** — category pillar page for the client's unique term ("Was ist Neuro-SEO?") → targets Awareness
+- **P1** — case-study page per niche (Shopify / B2B / Local) → targets Retention
+- **P1** — comparison page ("Freelancer vs Agentur für <niche>") → targets Consideration
+- **P2** — glossary / FAQ hub covering pain points from Phase 5
 
-### 2. Editorial Outreach (third-party authority)
-- **P0** — Pitch inclusion into high-opportunity editorial articles surfaced by `get_actions` (scope=editorial). Example: evergreen.media, OMR, t3n, fachportal of the niche
-- **P1** — Publish 1 guest article per quarter on competitor-cited domains
-- **P2** — Get quoted in roundup / listicle articles ("Top N [role] in Deutschland")
+### 2. Editorial outreach
+- **P0** — pitch inclusion in high-opportunity editorial articles surfaced by `get_actions` (scope=editorial): evergreen.media, OMR, t3n, niche fachportal
+- **P1** — 1 guest article per quarter on competitor-cited domains
+- **P2** — get quoted in roundup / listicle ("Top N <role> in Deutschland")
 
-### 3. UGC / Community Presence
-- **P0** — Establish presence in **Reddit** subs identified in Phase 5 (r/selbststaendig, r/SEO, r/ecommerce, niche-specific) — answer 1 thread/week with non-spammy, branded answers
-- **P0** — Answer top-pain questions on **Gutefrage** referencing own expertise
-- **P1** — Publish 1 LinkedIn **pulse article** per month in the format Peec's `get_actions` recommends
-- **P1** — Produce YouTube content matching the format of the competitor channel already being cited
-- **P2** — OMR forum / t3n forum — 1 high-signal reply per month
+### 3. UGC / community
+- **P0** — presence in Reddit subs from Phase 5 (r/selbststaendig, r/SEO, r/ecommerce, niche-specific) — 1 thread / week with non-spammy branded answers
+- **P0** — answer top-pain questions on Gutefrage
+- **P1** — 1 LinkedIn Pulse / month in the format `get_actions` recommends
+- **P1** — YouTube content matching the format of the already-cited competitor channel
+- **P2** — OMR / t3n forum — 1 high-signal reply / month
 
-### 4. Technical SEO / Schema
-- **P1** — Add **Person + Organization + Service** Schema.org to homepage and offer pages
-- **P1** — Add **FAQPage** schema to pillar pages (using mined forum pain points as the Q&A items)
-- **P2** — Add **Review/Rating** schema if the client has testimonials
-- **P2** — Breadcrumbs + internal linking aligned to pillar architecture
+### 4. Technical SEO / schema
+- **P1** — Person + Organization + Service Schema.org on homepage + offer pages
+- **P1** — FAQPage schema on pillar pages (use mined forum pain as Q&A items)
+- **P2** — Review / Rating schema if testimonials exist
+- **P2** — breadcrumbs + internal linking aligned to pillar architecture
 
-### 5. Peec AI Operations (maintenance)
-- **P0** — **Weekly review** of the hero prompt's visibility curve (per engine)
-- **P1** — Monthly check: surface new competitors appearing in `get_chat` responses; add via `create_brand`
-- **P1** — Quarterly: expand prompt count from 20 → 50 (add mined forum pain points as they emerge)
-- **P2** — Set up `/schedule` trigger to auto-run brand + domain reports weekly
+### 5. Peec AI operations (maintenance)
+- **P0** — weekly review of the hero prompt's visibility curve per engine
+- **P1** — monthly: new competitors from `get_chat` → `create_brand`
+- **P1** — quarterly: grow from 20 → 50 prompts (add new mined pain points)
+- **P2** — `/schedule` trigger for weekly auto-run of brand + domain reports
 
-### 6. Data Ops / Analytics
-- **P1** — Connect Visibly AI to the domain's GSC + GA4 (if not already — check with `get_google_connections`)
-- **P1** — Monthly check: are commercial-intent GSC queries rising (CTR & impressions for offer keywords)?
-- **P2** — Cross-reference: does Peec SoV lift correlate with GA4 lead volume lift? (Tag leads with "source: AI engine")
+### 6. Data ops / analytics
+- **P1** — connect Visibly AI to the domain's GSC + GA4 if not already (`get_google_connections`)
+- **P1** — monthly: are commercial-intent GSC queries rising (CTR + impressions for offer keywords)?
+- **P2** — cross-reference: does Peec SoV lift correlate with GA4 lead volume lift? Tag leads with "source: AI engine"
 
-### 7. Positioning / Brand
-- **P0** — Ensure homepage and all offer pages mention the **exact offer language** tested in Decision prompts (retainer, monatlich, System, laufend, Neuro-SEO, etc.) — LLMs can't recommend terminology that isn't on the site
-- **P1** — Publish 1 "**defining**" piece of content per quarter that owns the client's category (white paper, podcast series, framework diagram)
-- **P2** — Speak at 1-2 industry events per year; ensure talk abstracts end up in event archives (AI-scrapable)
+### 7. Positioning / brand
+- **P0** — ensure homepage + offer pages contain the **exact offer language** tested in Decision prompts (retainer, monatlich, System, laufend, Neuro-SEO). LLMs can't recommend terminology that isn't on the site.
+- **P1** — 1 "defining" piece of content per quarter owning the client's category (white paper, podcast series, framework diagram)
+- **P2** — 1–2 industry events per year; ensure talk abstracts land in event archives (AI-scrapable)
 
 ### Output format
 
-When delivering the backlog, present as a sortable table the user can paste into Notion/Linear:
+Present as a sortable table, paste-ready for Notion / Linear:
 
 ```
 | # | Priority | Effort | Category | Task | Owner | Due |
-|---|---|---|---|---|---|---|
+|---|----------|--------|----------|------|-------|-----|
 | 1 | P0 | M | Content | Build "Neuro-SEO Retainer" landing page with pricing + FAQ schema | Antonio | 2026-05-10 |
-| 2 | P0 | S | UGC | Answer top r/selbststaendig thread on "SEO-Freelancer erfahrungen" | Antonio | 2026-04-26 |
+| 2 | P0 | S | UGC     | Answer top r/selbststaendig thread on "SEO-Freelancer erfahrungen" | Antonio | 2026-04-26 |
 ...
 ```
 
-Always include at least **5 P0 tasks** covering at least 3 different categories. The backlog is only useful if it's executable within the next 2 weeks.
-
-
----
-
-## Common Pitfalls
-
-- **Tool brands as "competitors"** — they distort SoV for service-business projects. Remove them.
-- **Creating too many prompts at once** — TRIAL plan credits. Start with 20; scale after confirming plan limits.
-- **Prompt text > 200 chars** — Peec's max length. Tighten.
-- **Mixing theme + funnel in topics** — topics can only hold one value per prompt. Use topics for the primary slicing dimension (funnel stage), tags for secondary (theme).
-- **Skipping alias fields on `create_brand`** — brands with Umlauts need ASCII aliases (`"Stürkat" + "Stuerkat"`) or they won't match in LLM text mentions.
-- **Asking for reports before 24h** — prompt runs happen daily; fresh prompts/brands won't appear in reports immediately.
-- **Deleting old topics before moving prompts** — prompts become detached. Always `update_prompt` first, then `delete_topic`.
+Always ≥5 P0 tasks across ≥3 categories. The backlog is only useful if it's executable within 2 weeks.
 
 ---
 
-## Customer Journey Prompt Library (reusable starters)
+## Customer journey prompt library (reusable starters)
 
-These tend to work for most DACH-region service-business projects. Adapt the domain-specific nouns.
+These templates work for most DACH service-business projects. The skeletons stay German because that IS the buyer language being tested — translating to English would break the semantic value. Adapt domain-specific nouns.
 
 ### Awareness
-1. Was ist [category] und wie unterscheidet es sich von [alternative]?
-2. Wie optimiere ich [outcome] für ChatGPT- und Perplexity-Empfehlungen?
-3. Warum reicht klassisches [category] für [audience] 2026 nicht mehr aus?
-4. Welche [principle] steigern [KPI] im [niche]?
-5. Was bringt langfristige [service] im Vergleich zu einmaligen [alternative]?
+1. Was ist <category> und wie unterscheidet es sich von <alternative>?
+2. Wie optimiere ich <outcome> für ChatGPT- und Perplexity-Empfehlungen?
+3. Warum reicht klassisches <category> für <audience> 2026 nicht mehr aus?
+4. Welche <principle> steigern <KPI> im <niche>?
+5. Was bringt langfristige <service> im Vergleich zu einmaligen <alternative>?
 
 ### Consideration
-6. Beste [role] in Deutschland für [niche].
-7. Freelancer oder Agentur für laufende [service] – was lohnt sich?
-8. ⭐ Welcher [role] kombiniert [differentiator-A] mit [differentiator-B] als monatliches Retainer-Modell?
-9. Beste [role] für [platform] in der DACH-Region.
-10. Welche deutschen [role] bieten monatliche Betreuung inklusive Reporting?
+6. Beste <role> in Deutschland für <niche>.
+7. Freelancer oder Agentur für laufende <service> – was lohnt sich?
+8. **[hero candidate]** Welcher <role> kombiniert <differentiator-A> mit <differentiator-B> als monatliches Retainer-Modell?
+9. Beste <role> für <platform> in der DACH-Region.
+10. Welche deutschen <role> bieten monatliche Betreuung inklusive Reporting?
 
 ### Decision
-11. Wer ist [BRAND] und welche [service] bietet [er/sie] an?
-12. Was kostet eine monatliche [service] bei einem [role] in Deutschland?
-13. Welcher [role] bietet [differentiator] als laufendes System an?
-14. [Role] für [audience] in Deutschland gesucht – wen kontaktieren?
-15. Brauche einen persönlichen [role] und keinen Agentur-Vertrieb – wen empfehlt ihr?
+11. Wer ist <BRAND> und welche <service> bietet <er/sie> an?
+12. Was kostet eine monatliche <service> bei einem <role> in Deutschland?
+13. Welcher <role> bietet <differentiator> als laufendes System an?
+14. <role> für <audience> in Deutschland gesucht – wen kontaktieren?
+15. Brauche einen persönlichen <role> und keinen Agentur-Vertrieb – wen empfehlt ihr?
 
 ### Retention
-16. Welche [role] in Deutschland haben nachweisbare [niche]-Fallstudien?
-17. Welche Erfahrungen haben Kunden mit [BRAND] und dem [proprietary-system] gemacht?
-18. Welche deutschen [role] sind für ihre [niche]-Publikationen bekannt?
-19. Welcher [role] hat messbare Ergebnisse bei [platform]-Shops erzielt?
-20. Welche [role] veröffentlichen regelmäßig Fallstudien und Ergebnisse?
+16. Welche <role> in Deutschland haben nachweisbare <niche>-Fallstudien?
+17. Welche Erfahrungen haben Kunden mit <BRAND> und dem <proprietary-system> gemacht?
+18. Welche deutschen <role> sind für ihre <niche>-Publikationen bekannt?
+19. Welcher <role> hat messbare Ergebnisse bei <platform>-Shops erzielt?
+20. Welche <role> veröffentlichen regelmäßig Fallstudien und Ergebnisse?
 
 ---
 
-## Quick Command Reference
+## Quick reference
 
 | Goal | Tool |
 |---|---|
-| See all projects | `mcp__peec-ai__list_projects` |
-| See tracked competitors | `mcp__peec-ai__list_brands` |
-| See prompts + tags + topics | `mcp__peec-ai__list_prompts` |
+| All projects | `mcp__peec-ai__list_projects` |
+| Current competitors | `mcp__peec-ai__list_brands` |
+| Prompts + tags + topics | `mcp__peec-ai__list_prompts` |
 | Inspect an AI response | `mcp__peec-ai__list_chats` → `get_chat` |
 | Find invisible competitors | `mcp__peec-ai__get_domain_report` |
-| Find gap URLs (competitor-only) | `get_domain_report` + `filters: [{field: "gap", operator: "gt", value: 0}]` |
-| Add a competitor | `mcp__peec-ai__create_brand` |
-| Remove a competitor | `mcp__peec-ai__delete_brand` |
-| Add a prompt | `mcp__peec-ai__create_prompt` |
-| Reassign topic/tags | `mcp__peec-ai__update_prompt` |
-| Get recommendations | `mcp__peec-ai__get_actions` (overview → owned/editorial/ugc drill-down) |
+| Gap URLs (competitor-only) | `get_domain_report(filters: gap > 0)` |
+| Add competitor | `mcp__peec-ai__create_brand` |
+| Remove competitor | `mcp__peec-ai__delete_brand` |
+| Add prompt | `mcp__peec-ai__create_prompt` |
+| Reassign topic / tags | `mcp__peec-ai__update_prompt` |
+| Recommendations | `mcp__peec-ai__get_actions` (overview → owned / editorial / ugc) |
 | Pull GSC keywords | `mcp__visiblyai__get_keywords` or `query_search_console` |
-| Check GSC/GA4 connections | `mcp__visiblyai__get_google_connections` |
-| Find forum pain points | `WebSearch("site:reddit.com ...")`, `WebSearch("site:gutefrage.net ...")` |
-| Extract verbatim thread content | `WebFetch(url, "...")` |
+| Check GSC / GA4 | `mcp__visiblyai__get_google_connections` |
+| Forum pain | `WebSearch("site:reddit.com ...")`, `WebSearch("site:gutefrage.net ...")` |
+| Extract thread | `WebFetch(url, "...")` |
+
+---
+
+## Guardrails (do not do these)
+
+- Do not track SaaS tool brands as competitors for service-business projects — they aren't buyer alternatives and distort SoV
+- Do not create more than 20 prompts at once on TRIAL — credit burn; scale in waves, review after 48h
+- Do not exceed 200 chars per prompt — Peec's hard limit
+- Do not mix theme + funnel in topics — topics hold one value; use topics for the primary slicing (funnel stage), tags for secondary (theme)
+- Do not skip `aliases` on `create_brand` — names with Umlauts need ASCII aliases ("Stürkat" + "Stuerkat"), otherwise matching fails
+- Do not request reports before 24h of history — prompt runs happen daily; fresh prompts / brands won't appear yet
+- Do not delete old topics before moving prompts — prompts become detached; always `update_prompt` first, then `delete_topic`
+- Do not translate mined buyer language to marketing-speak — "Lohnt sich das?" ≠ "Welcher Nutzen besteht?"; the whole skill depends on verbatim buyer phrasing
