@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>peec-ai-skills — A Closed Growth Loop for AI Search Visibility</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+
+@page { size: A4 landscape; margin: 0; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { font-family: 'Montserrat', Arial, Helvetica, sans-serif; color: #171716; }
+
+.slide {
+  width: 297mm; height: 210mm;
+  page-break-after: always;
+  page-break-inside: avoid;
+  position: relative; overflow: hidden;
+  background: white;
+}
+.slide:last-child { page-break-after: auto; }
+
+/* ---- COVER ---- */
+.cover { background: #0c1115; color: white; padding: 0; }
+.cover-inner { padding: 30mm 22mm; height: 100%; position: relative; }
+.cover-bar { width: 60mm; height: 4mm; background: #f6571e; margin-bottom: 14mm; }
+.cover-eyebrow { font-size: 11pt; color: #f6571e; font-weight: 600; letter-spacing: 2pt; margin-bottom: 6mm; text-transform: uppercase; }
+.cover-title { font-size: 52pt; font-weight: 800; line-height: 1.05; margin-bottom: 8mm; }
+.cover-subtitle { font-size: 17pt; font-weight: 400; color: #c0c0c0; line-height: 1.4; margin-bottom: 30mm; max-width: 220mm; }
+.cover-meta-row { display: table; width: 100%; }
+.cover-meta-cell { display: table-cell; vertical-align: bottom; }
+.cover-meta-label { font-size: 9pt; color: #888; text-transform: uppercase; letter-spacing: 1pt; margin-bottom: 1mm; }
+.cover-meta-value { font-size: 12pt; color: white; font-weight: 600; }
+
+/* ---- SECTION DIVIDER ---- */
+.section { background: #0c1115; color: white; padding: 0; }
+.section-inner { padding-top: 70mm; padding-left: 22mm; padding-right: 22mm; }
+.section-bar { background: #f6571e; width: 30mm; height: 3mm; margin-bottom: 8mm; }
+.section-num { font-size: 13pt; color: #f6571e; font-weight: 600; margin-bottom: 4mm; letter-spacing: 1.5pt; }
+.section-title { font-size: 44pt; font-weight: 800; line-height: 1.05; margin-bottom: 6mm; }
+.section-tagline { font-size: 16pt; color: #c0c0c0; max-width: 200mm; line-height: 1.4; }
+
+/* ---- CONTENT ---- */
+.content { padding: 16mm 22mm 14mm; }
+.top-bar { position: absolute; top: 0; left: 0; right: 0; height: 8mm; background: #0c1115; }
+.top-bar-accent { position: absolute; top: 8mm; left: 0; right: 0; height: 1.2mm; background: #f6571e; }
+.brand { position: absolute; top: 2mm; left: 8mm; color: white; font-size: 9pt; font-weight: 600; letter-spacing: 1pt; }
+.slide-num { position: absolute; top: 2mm; right: 8mm; color: white; font-size: 9pt; font-weight: 500; }
+.footer {
+  position: absolute; bottom: 6mm; left: 22mm; right: 22mm;
+  font-size: 8pt; color: #999;
+  border-top: 0.2mm solid #ddd; padding-top: 2mm;
+  display: table; width: calc(100% - 44mm);
+}
+.footer-l { display: table-cell; text-align: left; }
+.footer-r { display: table-cell; text-align: right; }
+
+.h-bar { width: 18mm; height: 2mm; background: #f6571e; margin-bottom: 4mm; }
+h1.s-title { font-size: 26pt; font-weight: 700; line-height: 1.15; margin-bottom: 3mm; color: #0c1115; }
+h2.s-sub { font-size: 13pt; font-weight: 400; color: #555; margin-bottom: 7mm; line-height: 1.4; }
+h3.s-h3 { font-size: 13pt; font-weight: 700; color: #0c1115; margin-bottom: 3mm; margin-top: 4mm; }
+
+p, li { font-size: 11pt; line-height: 1.55; color: #171716; }
+strong { font-weight: 700; color: #0c1115; }
+ul, ol { margin: 2mm 0 2mm 6mm; }
+li { margin-bottom: 2mm; }
+
+table.data { border-collapse: collapse; width: 100%; margin: 3mm 0; }
+table.data th {
+  background: #f6571e; color: white;
+  padding: 2.5mm 3mm; text-align: left;
+  font-size: 10pt; font-weight: 700;
+}
+table.data td {
+  padding: 2.5mm 3mm; font-size: 10pt;
+  border-bottom: 0.2mm solid #eaeaea;
+  vertical-align: top;
+}
+table.data tr:nth-child(even) td { background: #f8f8f8; }
+
+.info-box {
+  border-left: 1.5mm solid #f6571e;
+  background: #f8f8f8;
+  padding: 4mm 5mm; margin: 4mm 0;
+  font-size: 11pt;
+}
+.info-box.blue { border-color: #043959; }
+.info-box.teal { border-color: #1abc9c; }
+.info-box.dark { border-color: #0c1115; }
+.info-box-title { font-weight: 700; color: #0c1115; margin-bottom: 1.5mm; font-size: 11pt; }
+
+pre, code {
+  font-family: 'Consolas', 'Courier New', Monaco, monospace;
+}
+code {
+  background: #f4f4f4; padding: 0.5mm 1.5mm; font-size: 9pt;
+  border-radius: 1mm; color: #0c1115;
+}
+pre {
+  background: #0c1115; color: #e0e0e0;
+  padding: 4mm 5mm; font-size: 8.5pt; line-height: 1.4;
+  white-space: pre; overflow: hidden;
+  border-radius: 1mm; margin: 3mm 0;
+}
+pre code { background: transparent; padding: 0; color: #e0e0e0; }
+pre.light { background: #f8f8f8; color: #171716; border-left: 1.5mm solid #f6571e; }
+pre.light code { color: #171716; }
+
+.kpi-row { display: table; width: 100%; margin: 5mm 0; border-collapse: separate; border-spacing: 4mm 0; }
+.kpi {
+  display: table-cell;
+  padding: 5mm 4mm;
+  text-align: center;
+  vertical-align: middle;
+  background: #f8f8f8;
+  border-left: 1.5mm solid #f6571e;
+}
+.kpi.teal { border-left-color: #1abc9c; }
+.kpi.navy { border-left-color: #043959; }
+.kpi-num { font-size: 30pt; font-weight: 800; color: #f6571e; display: block; line-height: 1; margin-bottom: 2mm; }
+.kpi.teal .kpi-num { color: #1abc9c; }
+.kpi.navy .kpi-num { color: #043959; }
+.kpi-label { font-size: 9.5pt; color: #555; line-height: 1.3; }
+
+.two-col { display: table; width: 100%; }
+.col { display: table-cell; vertical-align: top; }
+.col-l { padding-right: 6mm; width: 50%; }
+.col-r { padding-left: 6mm; width: 50%; }
+.col-l-narrow { padding-right: 5mm; width: 40%; }
+.col-r-wide { padding-left: 5mm; width: 60%; }
+
+.pill {
+  display: inline-block;
+  background: #0c1115; color: white;
+  padding: 0.8mm 2.5mm; font-size: 8.5pt; font-weight: 600;
+  border-radius: 1.5mm; margin-right: 1.5mm;
+}
+.pill.orange { background: #f6571e; }
+.pill.teal { background: #1abc9c; }
+.pill.navy { background: #043959; }
+
+.cta-banner {
+  background: #f6571e; color: white;
+  padding: 8mm 10mm; margin-top: 6mm;
+  text-align: center;
+}
+.cta-url { font-size: 18pt; font-weight: 700; font-family: 'Consolas', monospace; }
+.cta-label { font-size: 11pt; font-weight: 400; color: #ffe2d4; margin-bottom: 2mm; text-transform: uppercase; letter-spacing: 1.5pt; }
+
+.diagram {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 8pt; line-height: 1.35;
+  white-space: pre;
+  background: #f8f8f8;
+  padding: 4mm 5mm;
+  color: #0c1115;
+  border-left: 1.5mm solid #f6571e;
+}
+
+.legend { font-size: 8pt; color: #666; margin-top: 2mm; font-style: italic; }
+
+.tag { font-family: 'Consolas', monospace; font-size: 9pt; color: #f6571e; font-weight: 600; }
+
+.center { text-align: center; }
+.muted { color: #777; }
+</style>
+</head>
+<body>
+
+<!-- ============ SLIDE 1 — COVER ============ -->
+<div class="slide cover">
+  <div class="cover-inner">
+    <div class="cover-bar"></div>
+    <div class="cover-eyebrow">peec-ai-skills · v0.3</div>
+    <div class="cover-title">A closed growth loop<br>for AI search visibility.</div>
+    <div class="cover-subtitle">Production-tested Claude Code skills that turn a Peec AI project<br>into operator-ready setup, diagnosis, and one-decision orchestration.</div>
+    <div class="cover-meta-row">
+      <div class="cover-meta-cell">
+        <div class="cover-meta-label">Author</div>
+        <div class="cover-meta-value">Antonio Blago · Neuro-SEO System®</div>
+      </div>
+      <div class="cover-meta-cell">
+        <div class="cover-meta-label">Repo</div>
+        <div class="cover-meta-value">github.com/AntonioBlago/peec-ai-skills</div>
+      </div>
+      <div class="cover-meta-cell">
+        <div class="cover-meta-label">Date</div>
+        <div class="cover-meta-value">2026-04-23</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SLIDE 2 — PROBLEM ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">02 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">LLMs answer questions about your brand.<br>You don't see those answers.</h1>
+  <h2 class="s-sub">ChatGPT, Perplexity, Google AI Overview &mdash; they all recommend brands inside answers, not links. Whoever the LLM cites wins. Most teams have no idea what's being said.</h2>
+
+  <div class="kpi-row">
+    <div class="kpi"><span class="kpi-num">~70%</span><span class="kpi-label">of B2B buyers now use<br>AI assistants in research</span></div>
+    <div class="kpi navy"><span class="kpi-num">0</span><span class="kpi-label">of those queries<br>show up in Google Search Console</span></div>
+    <div class="kpi teal"><span class="kpi-num">∅</span><span class="kpi-label">SEO tooling that ties<br>AI mentions to actions</span></div>
+  </div>
+
+  <div class="info-box dark">
+    <div class="info-box-title">The gap nobody owns</div>
+    Brand visibility tracking exists (Peec AI). Content tools exist. SEO data exists. But nothing
+    connects "<em>my brand is invisible on prompt X</em>" to "<em>here's the one thing to do this week</em>".
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 1 — Pitch</div></div>
+</div>
+
+<!-- ============ SLIDE 3 — PEEC AI ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">03 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">Peec AI gives you the data layer.</h1>
+  <h2 class="s-sub">Structured tracking of brand mentions inside LLM answers across ChatGPT, Perplexity, and Google AI Overview &mdash; with the actual scraped chats and their cited sources.</h2>
+
+  <div class="two-col">
+    <div class="col col-l">
+      <h3 class="s-h3">What Peec measures</h3>
+      <ul>
+        <li><strong>Visibility per prompt</strong> &mdash; is your brand cited in the answer?</li>
+        <li><strong>Source URLs</strong> &mdash; which pages did the LLM pull from?</li>
+        <li><strong>Competitor share-of-voice</strong> &mdash; who else gets mentioned?</li>
+        <li><strong>Per-engine breakdown</strong> &mdash; ChatGPT vs Perplexity vs GAO</li>
+        <li><strong>Recommended actions</strong> &mdash; <code>get_actions(scope=editorial|ugc|owned)</code></li>
+      </ul>
+    </div>
+    <div class="col col-r">
+      <h3 class="s-h3">…but data is not action</h3>
+      <ul>
+        <li>20+ prompts &rarr; <strong>which one matters most</strong>?</li>
+        <li>Hero prompt at 0% visibility &rarr; <strong>fix on-page or pitch a citation</strong>?</li>
+        <li>3 competitors ranking &rarr; <strong>study which one's content</strong>?</li>
+        <li>Should I write content, do outreach, or fix taxonomy?</li>
+      </ul>
+      <div class="info-box" style="margin-top:5mm;">
+        <strong>peec-ai-skills</strong> sits on top of Peec and answers exactly that question &mdash;
+        every week, on demand, with one decision.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 1 — Pitch</div></div>
+</div>
+
+<!-- ============ SLIDE 4 — CLOSED LOOP ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">04 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">A closed growth loop &mdash; not a feature list.</h1>
+  <h2 class="s-sub">Six stages, each owned by one skill. The orchestrator picks one move per cycle. SkillMind lifts lessons from project A into priors for project B.</h2>
+
+  <div class="diagram">
+    ENTER       start-peec  (manual)             hooks/peec-detect.py (auto on session)
+                                  &darr;
+    UNDERSTAND  ai-visibility-setup              competitors · prompts · funnel · taxonomy
+                                  &darr;
+    DIAGNOSE    peec-checkup                     setup health · brand snapshot · top moves
+                                  &darr;
+    ANALYZE     content-cluster-builder          peec-content-intel (sources)
+                                  &darr;
+    DECIDE      ai-growth-agent  (orchestrator — calls /peec-checkup first)
+                                  &darr;
+    EXECUTE     content-write (Visibly skill)    citation-outreach
+                                  &darr;
+    LEARN       growth-loop-reporter             attribution &middot; next moves
+                                  &darr;
+                feeds back into UNDERSTAND ────────────────────┐
+                                                               &darr;
+    CROSS-PROJECT MEMORY     skillmind-learner   read priors · write patterns after lift
+  </div>
+
+  <div class="legend">All skills are user-invocable in Claude Code. Hooks auto-detect Peec context and inject state into the model.</div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 1 — Pitch</div></div>
+</div>
+
+<!-- ============ SLIDE 5 — SKILLS TABLE ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">05 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">9 skills, one entry point, zero ambiguity.</h1>
+  <h2 class="s-sub">Each skill owns one job. You never wonder which one to call &mdash; <span class="tag">/start-peec</span> dispatches based on state.</h2>
+
+  <table class="data">
+    <thead><tr><th style="width:38mm;">Skill</th><th style="width:20mm;">Role</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag">/start-peec</span></td><td><span class="pill orange">ENTER</span></td><td>Single entry point. Reads state, decides next skill.</td></tr>
+      <tr><td><span class="tag">/ai-visibility-setup</span></td><td><span class="pill">UNDERSTAND</span></td><td>9-phase setup: competitors, prompts, taxonomy. Phase 0: full / import / audit / partial / skip.</td></tr>
+      <tr><td><span class="tag">/peec-checkup</span></td><td><span class="pill teal">DIAGNOSE</span></td><td>Read-only health pass. Inventory + setup quality + brand snapshot + top 5–8 improvements.</td></tr>
+      <tr><td><span class="tag">/content-cluster-builder</span></td><td><span class="pill navy">ANALYZE</span></td><td>Turns prompts into 4–8 strategic content zones with attack vector per zone.</td></tr>
+      <tr><td><span class="tag">/peec-content-intel</span></td><td><span class="pill navy">ANALYZE</span></td><td>Per-prompt brief: Query Fan-Out + competitor scoring + forum pain mining.</td></tr>
+      <tr><td><span class="tag">/ai-growth-agent</span></td><td><span class="pill orange">DECIDE</span></td><td>Orchestrator. Always invokes /peec-checkup first, then picks ONE 4-week move.</td></tr>
+      <tr><td><span class="tag">/citation-outreach</span></td><td><span class="pill">EXECUTE</span></td><td>Outreach pipeline from get_actions + UGC discovery. 5 pitches/week cap.</td></tr>
+      <tr><td><span class="tag">/growth-loop-reporter</span></td><td><span class="pill">LEARN</span></td><td>Weekly closer: ≤400-word narrative + 3 next-actions + 1 stop-doing.</td></tr>
+      <tr><td><span class="tag">/skillmind-learner</span></td><td><span class="pill teal">MEMORY</span></td><td>Lifts patterns out of one project into priors for the next.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 1 — Pitch</div></div>
+</div>
+
+<!-- ============ SLIDE 6 — START-PEEC ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">06 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">/start-peec &mdash; one safe entry point.</h1>
+  <h2 class="s-sub">Reads <code>setup_state.json</code>, optionally probes Peec live, dispatches to the right downstream skill. Never produces deliverables itself &mdash; pure routing.</h2>
+
+  <div class="diagram">
+    /start-peec
+       │
+       ├── no state, Peec empty       &rarr;  /ai-visibility-setup  (full)
+       ├── no state, Peec populated   &rarr;  /ai-visibility-setup  (import — brownfield)
+       ├── state present, &lt; 90 days   &rarr;  /ai-growth-agent      (decide one move)
+       ├── state present, &gt; 90 days   &rarr;  /ai-visibility-setup  (audit — drift check)
+       └── state has missing phases   &rarr;  /ai-visibility-setup  partial:&lt;phase&gt;
+  </div>
+
+  <div class="info-box" style="margin-top:6mm;">
+    <div class="info-box-title">Why this matters</div>
+    First-time users on the orchestrator hit a hard stop ("no setup state, run setup first").
+    <span class="tag">/start-peec</span> closes that loop &mdash; even on a Peec project that someone else
+    already configured, it does the right thing without re-running discovery.
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 1 — Pitch</div></div>
+</div>
+
+<!-- ============ SLIDE 7 — PEEC-CHECKUP ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">07 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">/peec-checkup &mdash; the read-only health pass.</h1>
+  <h2 class="s-sub">One report, four sections. Works from day 1 of Peec data. Never writes to Peec, never modifies state. The lens you and the orchestrator both look through.</h2>
+
+  <div class="two-col">
+    <div class="col col-l">
+      <h3 class="s-h3">§0 Inventory</h3>
+      <ul>
+        <li>Brands · Prompts (per funnel stage) · Topics · Tags · Chats analysed</li>
+        <li>Window + days_with_data &mdash; explicit "insufficient data" badge if &lt;7</li>
+      </ul>
+      <h3 class="s-h3">§1 Setup health (P0/P1/P2 score)</h3>
+      <ul>
+        <li>SaaS-tool brands as competitors? &rarr; P0</li>
+        <li>Funnel stage &lt; 20% of prompts? &rarr; P1</li>
+        <li>Tags only the default 4? &rarr; P1</li>
+        <li>Brands with Umlauts but no ASCII alias? &rarr; P0</li>
+      </ul>
+    </div>
+    <div class="col col-r">
+      <h3 class="s-h3">§2 Brand performance snapshot</h3>
+      <ul>
+        <li>Visibility per stage / per engine</li>
+        <li>Hero prompts winning vs losing (top 5 each)</li>
+        <li>Source diversity &mdash; weak (&lt;5) / OK / healthy (&gt;15)</li>
+        <li>Competitor delta on weakest stage</li>
+      </ul>
+      <h3 class="s-h3">§3 Top 5–8 improvements (priority-ranked)</h3>
+      <ul>
+        <li>Score = impact × actionability × strategic_fit</li>
+        <li>Each item: causal trace + handoff skill + S/M/L effort + 4-week metric</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 1 — Pitch</div></div>
+</div>
+
+<!-- ============ SLIDE 8 — AI-GROWTH-AGENT ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">08 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">/ai-growth-agent &mdash; one decision, not a dashboard.</h1>
+  <h2 class="s-sub">Always invokes /peec-checkup first as its diagnostic input. Then picks exactly one tier, one skill, one 4-week metric. Logs every decision so the next run reads the history.</h2>
+
+  <div class="two-col">
+    <div class="col col-l-narrow">
+      <h3 class="s-h3">Gap priority ladder</h3>
+      <table class="data">
+        <thead><tr><th>Tier</th><th>Gap</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Data &lt; 7 days &rarr; STOP</td></tr>
+          <tr><td>2</td><td>Setup health &lt; 80% &rarr; setup audit</td></tr>
+          <tr><td>3</td><td>&lt; 20 prompts &rarr; partial:prompts</td></tr>
+          <tr><td>4</td><td>No zones &rarr; cluster-builder</td></tr>
+          <tr><td>5</td><td>Hero loses &rarr; content-write</td></tr>
+          <tr><td>6</td><td>Source diversity &lt; 5 &rarr; outreach</td></tr>
+          <tr><td>7</td><td>4+ weeks running &rarr; reporter</td></tr>
+        </tbody>
+      </table>
+      <p class="legend">Higher tier always wins. One per cycle.</p>
+    </div>
+    <div class="col col-r-wide">
+      <h3 class="s-h3">Decision schema (excerpt)</h3>
+<pre>Build the content zone "KI-SEO Retainer Decision"
+by 2026-04-26 with one hero article.
+
+Why: 47 Peec prompts active, but Decision stage
+only has 3 weak prompts (2 at 0%). Retainer is
+the main revenue product — Decision must be
+strongest, currently weakest.
+
+How:  /content-write
+      project_id:    or_bf5b...
+      focus_keyword: "KI-SEO Retainer"
+      page_type:     blog
+      language:      de  (from setup_state)
+      country:       DE  (from setup_state)
+
+Measurable in 4 weeks:
+  Visibility on pr_a38381d4: 0% &rarr; ≥15%
+  Zone visibility:           &rarr; &gt;10%
+
+Not doing now:
+  · outreach (no own asset to pitch yet)
+  · cluster refresh (zones still valid)</pre>
+    </div>
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 1 — Pitch</div></div>
+</div>
+
+<!-- ============ SLIDE 9 — HOOKS ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">09 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">Auto-detection: hooks inject state silently.</h1>
+  <h2 class="s-sub">Two hooks wrap <code>hooks/peec-detect.py</code>. Silent unless the prompt mentions Peec keywords or a setup_state.json is found in CWD. Never pollutes non-Peec sessions.</h2>
+
+  <div class="two-col">
+    <div class="col col-l">
+      <h3 class="s-h3">SessionStart hook</h3>
+      <ul>
+        <li>Walks CWD + 2 parent levels for <code>growth_loop/setup_state.json</code></li>
+        <li>If found &rarr; injects state summary + recommended skill</li>
+        <li>If not found &rarr; silent (exit 0)</li>
+      </ul>
+      <h3 class="s-h3">UserPromptSubmit hook</h3>
+      <ul>
+        <li>Reads stdin JSON, extracts prompt</li>
+        <li>Matches against keyword list (peec, sichtbarkeit, ai visibility, ...)</li>
+        <li>If match + no state &rarr; injects "<span class="tag">/start-peec</span>" hint</li>
+        <li>Otherwise silent</li>
+      </ul>
+    </div>
+    <div class="col col-r">
+      <h3 class="s-h3">JSON envelope per Claude Code hook schema</h3>
+<pre>{
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext":
+      "=== PEEC PROJECT DETECTED ===\n
+       State file: ...\n
+       Project:    antonioblago.de\n
+       Locale:     country=DE · language=de\n
+       Setup age:  143 days (very stale)\n
+       RECOMMENDED NEXT ACTION:
+       /ai-visibility-setup audit\n
+       ============================"
+  }
+}</pre>
+      <div class="info-box teal" style="margin-top:3mm;">
+        Claude Code sees this as system context and decides whether to act.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 1 — Pitch</div></div>
+</div>
+
+<!-- ============ SLIDE 10 — SETUP_STATE ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">10 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">setup_state.json &mdash; the memory the loop turns on.</h1>
+  <h2 class="s-sub">Single shared file at <code>&lt;project&gt;/growth_loop/setup_state.json</code>. <span class="tag">/ai-visibility-setup</span> writes it, all other skills read it &mdash; or refuse to run.</h2>
+
+  <div class="two-col">
+    <div class="col col-l">
+<pre class="light">{
+  "peec_project_id": "or_bf5b...",
+  "domain": "antonioblago.de",
+  "target_country": "DE",
+  "prompt_language": "de",
+  "secondary_languages": [],
+  "setup_version": "1.1",
+  "completed_at": "2026-04-23T14:30:00Z",
+  "phases_completed": [
+    "competitors", "prompts",
+    "topics", "tags",
+    "gsc_mapping", "forum_mining"
+  ],
+  "snapshot": {
+    "brands": 8, "prompts": 24,
+    "topics": 6, "tags": 18
+  },
+  "hero_prompt_id": "pr_a38381d4",
+  "last_audit_at": null
+}</pre>
+    </div>
+    <div class="col col-r">
+      <h3 class="s-h3">Why this matters</h3>
+      <ul>
+        <li><strong>No silent EN defaults.</strong> Country + language are explicit and travel through every downstream skill.</li>
+        <li><strong>Brownfield-aware.</strong> Existing Peec project? Phase 0 detects it, infers <code>completed_at</code> from <code>min(brand.created_at, prompt.created_at)</code>, and writes state without touching Peec.</li>
+        <li><strong>Age-driven re-runs.</strong> &lt;30d skip · 30–90d audit · &gt;90d full re-run.</li>
+        <li><strong>One source of truth.</strong> No drift between agent, hooks, dashboard.</li>
+      </ul>
+      <div class="info-box blue" style="margin-top:3mm;">
+        Schema + protocol: <code>skills/_shared/SETUP_STATE.md</code>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 1 — Pitch</div></div>
+</div>
+
+<!-- ============ SLIDE 11 — SECTION DIVIDER ============ -->
+<div class="slide section">
+  <div class="section-inner">
+    <div class="section-bar"></div>
+    <div class="section-num">PART 2 — TUTORIAL</div>
+    <div class="section-title">From zero to first decision<br>in under 15 minutes.</div>
+    <div class="section-tagline">Install the skills. Connect Peec. Run /start-peec on your existing project.<br>The orchestrator picks the first move &mdash; you ship it.</div>
+  </div>
+</div>
+
+<!-- ============ SLIDE 12 — PREREQUISITES ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">12 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">Prerequisites.</h1>
+  <h2 class="s-sub">Two required, two optional. Skills degrade gracefully when optional pieces are missing.</h2>
+
+  <table class="data">
+    <thead><tr><th style="width:30mm;">Tool</th><th style="width:18mm;">Required?</th><th>Why</th><th style="width:30mm;">Install</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Claude Code</strong></td><td><span class="pill orange">Required</span></td><td>The harness that runs the skills (CLI, VS Code, JetBrains, web)</td><td>claude.com/claude-code</td></tr>
+      <tr><td><strong>Peec AI MCP</strong></td><td><span class="pill orange">Required</span></td><td>Provides <code>mcp__peec-ai__*</code> tools &mdash; the data layer</td><td>OAuth (see next slide)</td></tr>
+      <tr><td><strong>Visibly AI MCP</strong></td><td><span class="pill teal">Optional</span></td><td>GSC / GA4, backlinks, onpage, Query Fan-Out (≥v0.6.0)</td><td>HTTP MCP (zero install)</td></tr>
+      <tr><td><strong>SkillMind MCP</strong></td><td><span class="pill teal">Optional</span></td><td>Cross-project memory for skillmind-learner</td><td><code>pip install skillmind</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="info-box" style="margin-top:6mm;">
+    <div class="info-box-title">Graceful degradation</div>
+    Without Visibly: GSC mapping + Query Fan-Out skipped, briefs still produced.<br>
+    Without SkillMind: cross-project priors fall back to <code>growth_loop/patterns.md</code>.<br>
+    Without Peec MCP: nothing works &mdash; this is the data spine.
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 2 — Tutorial</div></div>
+</div>
+
+<!-- ============ SLIDE 13 — INSTALL ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">13 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">Install in 30 seconds.</h1>
+  <h2 class="s-sub">One bash script symlinks all 9 skills into <code>~/.claude/skills/</code>. <code>git pull</code> in the repo updates every installed skill in place.</h2>
+
+  <h3 class="s-h3">Default install (symlink)</h3>
+<pre>git clone https://github.com/AntonioBlago/peec-ai-skills.git ~/peec-ai-skills
+cd ~/peec-ai-skills
+./claude-peec-ai.sh                              # symlink all 9 skills</pre>
+
+  <h3 class="s-h3">Useful flags</h3>
+<pre>./claude-peec-ai.sh --copy                       # copy instead of symlink (no git pull updates)
+./claude-peec-ai.sh --target ./.claude            # per-project install
+./claude-peec-ai.sh --force                       # overwrite existing skill dirs
+./claude-peec-ai.sh --dry-run                     # preview, no fs changes
+./claude-peec-ai.sh --uninstall                   # remove all skill entries
+./claude-peec-ai.sh --only start-peec,peec-checkup   # partial install</pre>
+
+  <div class="info-box teal" style="margin-top:4mm;">
+    On Windows: symlinks need Developer Mode or admin rights. Use <code>--copy</code> as a safe fallback.
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 2 — Tutorial</div></div>
+</div>
+
+<!-- ============ SLIDE 14 — CONNECT PEEC MCP ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">14 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">Connect the Peec MCP &mdash; OAuth, no API key.</h1>
+  <h2 class="s-sub">Single command. First tool call opens browser to authorize. Tokens persist; subsequent runs are silent.</h2>
+
+  <h3 class="s-h3">CLI</h3>
+<pre>claude mcp add peec-ai --transport streamable-http https://api.peec.ai/mcp</pre>
+
+  <h3 class="s-h3">Or directly in <code>~/.claude/settings.json</code> / <code>~/.claude.json</code></h3>
+<pre class="light">{
+  "mcpServers": {
+    "peec-ai": {
+      "type": "http",
+      "url": "https://api.peec.ai/mcp"
+    }
+  }
+}</pre>
+
+  <div class="info-box" style="margin-top:5mm;">
+    <div class="info-box-title">Optional: Visibly AI MCP (recommended)</div>
+<pre class="light" style="margin-top:2mm;">{
+  "visiblyai": {
+    "type": "http",
+    "url": "https://mcp.visibly-ai.com/mcp",
+    "headers": { "Authorization": "Bearer lc_your_key" }
+  }
+}</pre>
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 2 — Tutorial</div></div>
+</div>
+
+<!-- ============ SLIDE 15 — FIRST RUN BROWNFIELD ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">15 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">First run on an existing Peec project.</h1>
+  <h2 class="s-sub">No destructive 9-phase setup. <span class="tag">/start-peec</span> detects the brownfield, asks 3 questions, writes state with the <em>real</em> setup date.</h2>
+
+  <div class="diagram">
+    User       /start-peec
+    Skill      Reads &lt;cwd&gt;/growth_loop/setup_state.json &mdash; missing.
+               Probes Peec live: list_brands, list_prompts, list_topics, list_tags.
+               &rarr; Detected: 8 brands, 24 prompts, 6 topics, 18 tags.
+
+    Skill      "Detected existing Peec setup. Import as state, or run full setup?
+                Target country (ISO)?    Prompt language (ISO)?"
+    User       import · DE · de
+
+    Skill      Infers completed_at = min(brand.created_at, prompt.created_at)
+               &rarr; 2025-09-12  (~ 224 days ago)
+               Writes growth_loop/setup_state.json (atomic .tmp + rename).
+
+    Skill      "State imported. Inferred setup date: 2025-09-12 (~224 days ago).
+                &rarr; Setup is &gt; 90 days. Recommended: /ai-visibility-setup audit."
+  </div>
+
+  <div class="info-box" style="margin-top:4mm;">
+    The orchestrator never lies about setup age. If your Peec project is 6 months old, the state
+    reflects that &mdash; and the next move is an audit, not a "fresh setup" report.
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 2 — Tutorial</div></div>
+</div>
+
+<!-- ============ SLIDE 16 — PHASE 0 MODES ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">16 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">Phase 0 mode selection &mdash; what actually runs.</h1>
+  <h2 class="s-sub">Cheap (one file read + at most one parallel Peec read). Decides whether the rest of the setup is needed at all.</h2>
+
+  <table class="data">
+    <thead>
+      <tr><th>State file</th><th>Live Peec content</th><th>Mode</th><th>What runs</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Missing</td><td>Empty (≤2 brands AND ≤4 prompts AND ≤0 topics)</td><td><span class="pill orange">full</span></td><td>All 9 phases. Greenfield.</td></tr>
+      <tr><td>Missing</td><td>Populated (≥3 brands OR ≥5 prompts OR ≥1 topic)</td><td><span class="pill teal">import</span></td><td>Reconstruct state, ask 3 questions, exit. No discovery.</td></tr>
+      <tr><td>Present, &lt; 30 days</td><td>—</td><td><span class="pill">skip</span></td><td>Show summary, ASK before re-running.</td></tr>
+      <tr><td>Present, 30–90 days</td><td>—</td><td><span class="pill navy">audit</span></td><td>Live-diff snapshot. Re-run only phases with &gt;20% drift.</td></tr>
+      <tr><td>Present, &gt; 90 days</td><td>—</td><td><span class="pill orange">full</span> (warn)</td><td>Recommend full re-run; data is stale.</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="s-h3">User can always force a mode</h3>
+<pre>/ai-visibility-setup scope=full              # ignore state, re-run from scratch
+/ai-visibility-setup scope=audit             # force audit even on fresh state
+/ai-visibility-setup scope=partial:gsc_mapping   # jump to one specific phase</pre>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 2 — Tutorial</div></div>
+</div>
+
+<!-- ============ SLIDE 17 — CHECKUP OUTPUT ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">17 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">/peec-checkup output anatomy.</h1>
+  <h2 class="s-sub">Saved to <code>&lt;project&gt;/checkups/YYYY-MM-DD_checkup.md</code>. Mirrored to stdout. The orchestrator reads this same file as its input.</h2>
+
+<pre style="font-size:7.5pt;line-height:1.35;">
+# Peec Checkup — antonioblago.de · 2026-04-23
+
+## TL;DR
+- Visibility now: 12% (was 8% 14d ago)
+- Setup health:   78% (1 P0, 3 P1)
+- Strongest funnel: Awareness (24%) · Weakest: Decision (3%)
+- Top competitor on weak stage: rauschsinnig.de
+- Recommended next action: /content-cluster-builder
+
+## §0 Inventory                  ## §1 Setup health (78%)            ## §2 Brand performance
+| Bucket          | Count |       P0 — Brand "Stürkat" missing       Visibility per stage:
+| Brands tracked  |   8   |       ASCII alias                          Awareness    24%
+| Prompts total   |  24   |                                            Consideration 18%
+|  · Awareness    |   6   |       P1 — Decision stage only             Decision      3%   ← weakest
+|  · Decision     |   3   |       3 prompts (12.5% of total)           Retention    14%
+|  · ...                          P1 — Tags = default 4 only         Hero prompts losing (top 5):
+| Chats analysed  | 184   |                                          1. "KI-SEO Retainer für DACH" — 0%
+| Window          | 28d   |                                            top: rauschsinnig.de @ 38%
+
+## §3 Top 5 improvements (priority-ranked, score = impact × actionability × strategic_fit)
+#1   Build content zone "KI-SEO Retainer Decision"    →  /content-cluster-builder   M    +12% zone vis. 4w
+#2   Fix Decision-stage prompt mass (3 → 7 prompts)   →  /ai-visibility-setup       S    funnel 3% → 8%
+#3   Pitch own case-study to t3n.de + omr.com         →  /citation-outreach         M    source div +3
+#4   Add "Stuerkat" alias to brand                    →  /ai-visibility-setup       S    chat match fix
+#5   Brief: pr_a38381d4 (KI-SEO Retainer für DACH)    →  /peec-content-intel        L    pr visibility +20%
+
+Recommended next action: /content-cluster-builder — because Decision stage has the biggest
+visibility gap AND highest actionability score.
+</pre>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 2 — Tutorial</div></div>
+</div>
+
+<!-- ============ SLIDE 18 — GROWTH AGENT FLOW ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">18 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">/ai-growth-agent flow &mdash; checkup-first orchestration.</h1>
+  <h2 class="s-sub">No duplicate diagnostic logic. The agent runs the checkup, reads its sections, picks one tier, hands off with parameters pre-filled, logs the decision.</h2>
+
+  <div class="diagram">
+    Step 0    Pre-flight: read setup_state.json — STOP if missing or incomplete.
+
+    Step 1a   /peec-checkup   →   &lt;project&gt;/checkups/2026-04-23_checkup.md  (always run)
+    Step 1b   Read aux history: *_learnings.json, decisions_log.md, outreach_log.md
+    Step 1c   Optional: mcp__skillmind__recall(query, k=5, filter_tags=["peec"])
+
+    Step 2    Detect gap from checkup §0+§1+§2 (priority ladder, higher tier wins)
+
+    Step 3    Produce decision  (one verb, one object, one 4-week metric)
+
+    Step 4    Hand off with parameters pre-filled  (execute, don't recommend)
+
+    Step 5    Append to growth_loop/decisions_log.md
+              ## 2026-04-23 — content-cluster-builder
+              Checkup ref: checkups/2026-04-23_checkup.md
+              Signal:      Decision stage 3% — biggest gap (checkup §2)
+              Tier picked: 4   ·  Override of detected tier? no
+              Decision:    Build "KI-SEO Retainer Decision" zone
+              ...
+  </div>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 2 — Tutorial</div></div>
+</div>
+
+<!-- ============ SLIDE 19 — EXECUTE + LEARN + MEMORY ============ -->
+<div class="slide content">
+  <div class="top-bar"></div><div class="top-bar-accent"></div>
+  <div class="brand">peec-ai-skills</div><div class="slide-num">19 / 20</div>
+  <div class="h-bar" style="margin-top:8mm;"></div>
+  <h1 class="s-title">Execute · Learn · Remember.</h1>
+  <h2 class="s-sub">The four skills that close the loop. Each has one job; together they convert one decision into measurable lift, then turn that lift into a transferable pattern.</h2>
+
+  <table class="data">
+    <thead><tr><th style="width:42mm;">Skill</th><th>What it produces</th><th style="width:32mm;">Cadence</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="tag">/peec-content-intel</span></td>
+        <td>Per-prompt content brief: gap URLs + Query Fan-Out + forum pains + competitor breakdown + outline + outreach targets. Saves to <code>briefs/&lt;date&gt;_&lt;slug&gt;/</code>.</td>
+        <td>Per losing hero prompt, on demand</td>
+      </tr>
+      <tr>
+        <td><span class="tag">/content-cluster-builder</span></td>
+        <td>4–8 strategic content zones (intent × funnel × gap × demand). Persists zones as Peec <code>zone:*</code> tags for later attribution.</td>
+        <td>When prompts ≥ 20</td>
+      </tr>
+      <tr>
+        <td><span class="tag">/citation-outreach</span></td>
+        <td>Outreach pipeline: target table + per-target pitch templates + tracker file. Cap 5 pitches/week. After 4 weeks: attribution summary.</td>
+        <td>Weekly ritual</td>
+      </tr>
+      <tr>
+        <td><span class="tag">/growth-loop-reporter</span></td>
+        <td>≤400-word narrative: what moved · why · 3 next-actions + 1 stop-doing. Saves <code>growth_loop/&lt;date&gt;_report.md</code> + <code>learnings.json</code>.</td>
+        <td>Weekly (active) / monthly (maintenance)</td>
+      </tr>
+      <tr>
+        <td><span class="tag">/skillmind-learner</span></td>
+        <td>After any measurable outcome: extracts 1–3 transferable patterns (causal, falsifiable, evidence-backed) and persists to SkillMind. Next orchestrator run recalls them as priors.</td>
+        <td>After reporter closes a cycle</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer"><div class="footer-l">Antonio Blago · info@antonioblago.com</div><div class="footer-r">Part 2 — Tutorial</div></div>
+</div>
+
+<!-- ============ SLIDE 20 — CTA ============ -->
+<div class="slide cover">
+  <div class="cover-inner">
+    <div class="cover-bar"></div>
+    <div class="cover-eyebrow">get started</div>
+    <div class="cover-title" style="font-size:46pt;">Closed loop &mdash;<br>not a dashboard.</div>
+    <div class="cover-subtitle" style="margin-bottom:16mm;">9 production-tested skills, one entry point, persistent state, automatic detection.<br>Free, MIT-licensed, no SaaS. Bring your own Claude Code.</div>
+
+    <div class="cta-banner">
+      <div class="cta-label">install + read + contribute</div>
+      <div class="cta-url">github.com/AntonioBlago/peec-ai-skills</div>
+    </div>
+
+    <div class="cover-meta-row" style="margin-top:14mm;">
+      <div class="cover-meta-cell">
+        <div class="cover-meta-label">Author</div>
+        <div class="cover-meta-value">Antonio Blago</div>
+      </div>
+      <div class="cover-meta-cell">
+        <div class="cover-meta-label">Email</div>
+        <div class="cover-meta-value">info@antonioblago.com</div>
+      </div>
+      <div class="cover-meta-cell">
+        <div class="cover-meta-label">Profile</div>
+        <div class="cover-meta-value">antonioblago.com</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

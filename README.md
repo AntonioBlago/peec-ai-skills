@@ -6,6 +6,27 @@ These skills turn a freshly-invoked Peec AI project into an operator-ready setup
 
 ---
 
+## Quick install (60 seconds)
+
+```bash
+# 1. Clone + install all 9 skills into ~/.claude/skills/
+git clone https://github.com/AntonioBlago/peec-ai-skills.git ~/peec-ai-skills
+cd ~/peec-ai-skills
+./claude-peec-ai.sh                 # use --copy on Windows without dev mode
+
+# 2. Connect the Peec AI MCP (OAuth in browser on first tool call)
+claude mcp add peec-ai --transport streamable-http https://api.peec.ai/mcp
+
+# 3. Restart Claude Code, then in any directory:
+#    /start-peec    →  detects state, dispatches the right skill
+```
+
+That's it. <code>/start-peec</code> reads <code>growth_loop/setup_state.json</code> if present, otherwise probes Peec live and either offers brownfield import or runs greenfield setup. Optional MCPs (Visibly AI, SkillMind) are documented under [Prerequisites](#prerequisites).
+
+📑 **5-minute overview:** [`docs/presentation/peec-ai-skills-deck.pdf`](docs/presentation/peec-ai-skills-deck.pdf) — 20-slide pitch + tutorial.
+
+---
+
 ## Skill system (8 skills + 1 orchestrator + 1 entry point)
 
 Not a feature list — a **closed growth loop** with a cross-project memory layer underneath. Every skill has a specific job; the orchestrator (`ai-growth-agent`) decides which one runs next; `skillmind-learner` lifts lessons out of one project into priors for the next.
