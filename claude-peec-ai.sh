@@ -33,6 +33,8 @@ SKILLS=(
   growth-loop-reporter
   skillmind-learner
   ai-growth-agent
+  start-peec
+  peec-checkup
 )
 
 c_reset=$'\033[0m'

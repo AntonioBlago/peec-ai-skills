@@ -75,32 +75,55 @@ If completed_at older than 90 days: WARN once, continue.
 Use peec_project_id from state — do not call list_projects again.
 ```
 
-### 1. Read state
+### 1. Read state — ALWAYS run /peec-checkup first
+
+The orchestrator does not duplicate diagnostic logic. It **always** invokes `/peec-checkup` as its first substantive step and uses the resulting report as the input for gap detection in §2. This guarantees:
+- Setup health (red flags) is considered before any content/citation move is recommended
+- Inventory counts (brands / prompts per stage / topics / tags / chats) are explicit, not guessed
+- Brand-performance snapshot is the same one the user would see if they ran the checkup themselves — no drift between agent and dashboard
+
 ```
-# project_id already resolved from setup_state.json (no list_projects needed)
-mcp__peec-ai__get_brand_report(dimensions=["date"], start_date=-28d)
+# Step 1a — orchestrate the read-only diagnostic
+Invoke /peec-checkup
+  inputs:
+    project_id    = setup_state.peec_project_id
+    date_range    = last 28 days (auto-shrink if project younger)
+    top_n         = 8
+  output: <project>/checkups/YYYY-MM-DD_checkup.md  (skill writes this)
+
+# Step 1b — read auxiliary history that checkup doesn't cover
 Read: <project>/growth_loop/*_learnings.json      (may not exist)
 Read: <project>/growth_loop/decisions_log.md      (may not exist)
 Read: <project>/outreach/*_outreach_log.md        (may not exist)
 
-# Cross-project priors (optional, if SkillMind MCP is available)
+# Step 1c — cross-project priors (optional, if SkillMind MCP is available)
 mcp__skillmind__recall(query="<likely gap type>", k=5, filter_tags=["peec"])
 ```
 
-If no history exists: say so plainly ("first run — deciding from structural data only, next run will be sharper") and continue. If SkillMind is not installed, skip the recall step — patterns are a bonus prior, not a requirement.
+If `/peec-checkup` reports `days_with_data < 7`: STOP at Tier 1 below — do not force action.
+If no history exists: say so plainly ("first run — deciding from checkup + structural data only, next cycle will be sharper") and continue. If SkillMind is not installed, skip the recall step — patterns are a bonus prior, not a requirement.
 
 ### 2. Detect gap (priority ladder — higher tier always wins)
 
-| Tier | Gap | Signal | Handoff |
+Inputs come from the §1 checkup report — read its sections in this order:
+
+1. **Inventory + Setup health** (checkup §0 + §1) → tiers 1 + 2
+2. **Brand performance** (checkup §2) → tiers 3 + 4 + 5
+3. **Top improvements ranked** (checkup §3) → confirms or overrides tier choice with concrete actions
+
+| Tier | Gap | Signal (from checkup) | Handoff |
 |---|---|---|---|
-| 1 | Data | Peec has <7 days of history | STOP. Wait, do not force action. |
-| 2 | Taxonomy | Missing funnel stage · tags unclear · <20 prompts | `ai-visibility-setup` (full or partial) |
-| 3 | Cluster | 20+ prompts, no strategic zones / tags | `content-cluster-builder` |
-| 4 | Content | Zones exist, but a zone has no hero asset | `content-write` (external) or `peec-content-intel` for the brief |
-| 5 | Citation | Hero content exists, no external citations | `citation-outreach` |
-| 6 | Learning | Loop is running, no pattern tracking | `growth-loop-reporter` |
+| 1 | Data | `days_with_data < 7` in checkup §0 | STOP. Wait, do not force action. |
+| 2 | Setup quality | checkup §1 Setup Health < 80% OR any P0 finding | `ai-visibility-setup` (audit or partial:<phase>) |
+| 3 | Taxonomy mass | <20 active prompts OR any funnel stage <2 prompts (checkup §0) | `ai-visibility-setup partial:prompts` |
+| 4 | Cluster | 20+ prompts, no strategic `zone:*` tags (checkup §0 tags list) | `content-cluster-builder` |
+| 5 | Content | Zones exist, but a losing hero prompt (checkup §2) has no own asset | `content-write` (external) or `peec-content-intel` for the brief |
+| 6 | Citation | Hero content exists, source diversity < 5 (checkup §2) OR `editorial`/`ugc` actions queued | `citation-outreach` |
+| 7 | Learning | Loop has been running 4+ weeks, no `growth_loop/*_report.md` files | `growth-loop-reporter` |
 
 **Rule:** Exactly one tier per cycle. If two tiers look tied, pick the lower number. Parallel work across tiers means the tiers weren't ranked properly — fix the ranking.
+
+**Override rule:** if checkup §3 ranks a #1 improvement that maps to a higher-tier handoff than the gap detection picked, prefer the checkup's #1 — its leverage scoring (impact × actionability × strategic_fit) already accounts for the same axes. Log the override in §6.
 
 ### 3. Produce decision (see §5 schema)
 
@@ -149,7 +172,9 @@ Run <skill-name> with:
 ```markdown
 ## <YYYY-MM-DD> — <skill-name>
 
-Signal: <what in the data triggered this>
+Checkup ref: <path to YYYY-MM-DD_checkup.md>   # always present from this version on
+Signal: <what in the checkup triggered this>
+Tier picked: <1–7>  · Override of detected tier? <no | yes: detected=N, override=M>
 Decision: <one sentence>
 Params: <key=value, key=value>
 Executed: ✓ | ✗ <reason>

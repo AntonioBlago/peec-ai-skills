@@ -6,24 +6,32 @@ These skills turn a freshly-invoked Peec AI project into an operator-ready setup
 
 ---
 
-## Skill system (6 skills + 1 orchestrator)
+## Skill system (8 skills + 1 orchestrator + 1 entry point)
 
 Not a feature list — a **closed growth loop** with a cross-project memory layer underneath. Every skill has a specific job; the orchestrator (`ai-growth-agent`) decides which one runs next; `skillmind-learner` lifts lessons out of one project into priors for the next.
 
 ```
      ┌────────────────────────────────────────────────────────┐
      │                                                        │
+     │   ENTER               start-peec  (manual entry)      │
+     │                       hooks/peec-detect.py (auto)      │
+     │                                    ↓                   │
      │   UNDERSTAND          ai-visibility-setup              │
      │   (prompts,           peec-content-intel (demand)      │
      │    demand,                         ↓                   │
      │    taxonomy)                                           │
      │                                                        │
+     │   DIAGNOSE            peec-checkup                     │
+     │   (read-only          (setup health + brand snapshot   │
+     │    health pass)        + ranked improvements)          │
+     │                                    ↓                   │
      │   ANALYZE             content-cluster-builder          │
      │   (strategic          peec-content-intel (sources)     │
      │    zones)                          ↓                   │
      │                                                        │
      │   DECIDE    ◄──────── ai-growth-agent (orchestrator)   │
-     │   (one move)                       ↓                   │
+     │   (one move)          calls /peec-checkup first        │
+     │                                    ↓                   │
      │                                                        │
      │   EXECUTE             @content-write (Visibly skill)   │
      │   (build +            citation-outreach                │
@@ -45,15 +53,17 @@ Not a feature list — a **closed growth loop** with a cross-project memory laye
 
 | Skill | What it does | Credits | When to trigger |
 |---|---|---|---|
-| [`ai-visibility-setup`](skills/ai-visibility-setup/SKILL.md) | End-to-end Peec project configuration: competitor discovery from real AI chats, forum pain-mining (Reddit, Gutefrage, t3n, OMR), customer-journey prompt design across Awareness → Consideration → Decision → Retention, and structured topic/tag taxonomy. 9 phases. | free | "Set up Peec for [client]", "My Peec competitors are wrong", "Restructure Peec topics" |
+| [`start-peec`](skills/start-peec/SKILL.md) **(entry point)** | Single-entry slash command. Detects `setup_state.json`, picks the correct downstream skill (setup / checkup / agent / audit) based on state age + user intent (observational vs action). Pure dispatch — never produces deliverables itself. | free | "Where do I start?", `/start-peec` |
+| [`ai-visibility-setup`](skills/ai-visibility-setup/SKILL.md) | End-to-end Peec project configuration: competitor discovery from real AI chats, forum pain-mining (Reddit, Gutefrage, t3n, OMR), customer-journey prompt design across Awareness → Consideration → Decision → Retention, and structured topic/tag taxonomy. 9 phases + Phase 0 (full / import / audit / partial / skip). | free | "Set up Peec for [client]", "My Peec competitors are wrong", "Restructure Peec topics" |
+| [`peec-checkup`](skills/peec-checkup/SKILL.md) | **Read-only health pass.** One report covering inventory (counts), setup-quality audit (red flags), brand-performance snapshot (visibility per stage / engine, hero prompts winning vs losing, source diversity), and 5–8 priority-ranked improvements. Never writes. Works from day 1 of data. | free | "Wo stehe ich?", "Mein Setup checken", "Verbesserungspotenziale?" |
 | [`peec-content-intel`](skills/peec-content-intel/SKILL.md) | Content-intelligence workflow: Peec gap-URLs → Query Fan-Out (via `mcp__visiblyai__query_fanout` ≥ v0.6.0) → Reddit/forum pain mining (via Peec's scraped index, bypassing Reddit's WebFetch block) → Visibly backlinks + onpage → opportunity scoring → publish-ready content brief. 6 phases. | ~10–45 Visibly cr | "Which content wins Peec prompt X?", "Build a content brief from Peec data" |
 | [`content-cluster-builder`](skills/content-cluster-builder/SKILL.md) | Turns a flat Peec prompt set into **strategic topic zones** — clustered by intent × funnel stage × visibility gap × demand signal. Produces 4-8 zones, each with a concrete "one move now" action and a measurable success metric. Persists zones as Peec tags for later attribution. | ~5–15 cr | "I have 20+ prompts, give me a content architecture, not a calendar" |
 | [`citation-outreach`](skills/citation-outreach/SKILL.md) | Converts Peec's `get_actions` + forum/UGC discovery into a **prioritized outreach pipeline**: contact extraction, pitch templates per channel type (editorial / Reddit / Gutefrage / YouTube), tracker file, citation-gain measurement. 5 pitches/week cap by default. | free | "Content is shipped — now I need external citations" |
 | [`growth-loop-reporter`](skills/growth-loop-reporter/SKILL.md) | Weekly/monthly **loop-closer**: measures visibility delta per prompt/zone, attributes it to specific content + outreach investments, detects winning patterns, outputs a ≤ 400-word narrative with 3 next-actions and at least 1 "stop doing". Persists learnings for the next cycle. | free | Weekly ritual or after any major action |
 | [`skillmind-learner`](skills/skillmind-learner/SKILL.md) | **Cross-project memory layer.** After a Peec skill produces a measurable outcome, extracts 1–3 transferable patterns (causal, falsifiable, evidence-backed) and persists them to SkillMind. On the next orchestrator run, recalls matching patterns as priors — lessons from project A inform decisions on project B. | free | After `growth-loop-reporter` closes a cycle, or when a pitch / brief / zone lift is measured |
-| [`ai-growth-agent`](skills/ai-growth-agent/SKILL.md) **(orchestrator)** | The decision-making layer above the other 6. Reads project state + last learnings + SkillMind priors, scans gaps, picks **one** next move, hands off to the right skill with parameters pre-filled. Tells you "do exactly this now" instead of "here is a dashboard". | free | "What should I work on this week?" |
+| [`ai-growth-agent`](skills/ai-growth-agent/SKILL.md) **(orchestrator)** | The decision-making layer. **Always invokes `/peec-checkup` first** to get inventory + setup health + brand performance, then picks **one** next move with a measurable 4-week metric. Hands off to the right skill with parameters pre-filled. Tells you "do exactly this now" instead of "here is a dashboard". | free | "What should I work on this week?" |
 
-All skills are **user-invocable** — Claude Code triggers them automatically when the conversation matches, and users can invoke them explicitly with `/ai-visibility-setup`, `/peec-content-intel`, `/content-cluster-builder`, `/citation-outreach`, `/growth-loop-reporter`, `/skillmind-learner`, or `/ai-growth-agent`.
+All skills are **user-invocable** — Claude Code triggers them automatically when the conversation matches, and users can invoke them explicitly with `/start-peec`, `/ai-visibility-setup`, `/peec-checkup`, `/peec-content-intel`, `/content-cluster-builder`, `/citation-outreach`, `/growth-loop-reporter`, `/skillmind-learner`, or `/ai-growth-agent`.
 
 ---
 
@@ -155,6 +165,62 @@ Setup is expensive — discovering competitors from real AI chats, designing 20 
 This means: every consumer skill knows the project ID, the language to write briefs in, the country to filter SERPs by, and which forums to mine — without re-asking you and without silently defaulting to English. Setup older than 90 days triggers a warning; older than that without `audit` mode is a yellow flag in any output.
 
 Schema and full read/write protocol: [`skills/_shared/SETUP_STATE.md`](skills/_shared/SETUP_STATE.md).
+
+### Auto-detection: `/start-peec` + hooks
+
+Two ways the right next move surfaces without you remembering which of 7 skills to call:
+
+**1. `/start-peec` — slash command (manual entry point)**
+Always-safe single command. Reads `setup_state.json`, optionally probes Peec live, then hands off:
+
+```
+/start-peec
+   │
+   ├── no state, Peec empty       → /ai-visibility-setup (full)
+   ├── no state, Peec populated   → /ai-visibility-setup (import)
+   ├── state present, < 90 days   → /ai-growth-agent
+   ├── state present, > 90 days   → /ai-visibility-setup (audit)
+   └── state has missing phases   → /ai-visibility-setup (partial:<phase>)
+```
+
+Use this when you forget the right starting skill or a hook isn't installed.
+
+**2. Hooks — automatic context injection**
+Two hooks in `~/.claude/settings.json` wrap [`hooks/peec-detect.py`](hooks/peec-detect.py). The script is silent unless it has something to say — it never pollutes non-Peec sessions.
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [{
+      "hooks": [{
+        "type": "command",
+        "command": "python \"<repo>/hooks/peec-detect.py\"",
+        "timeout": 10,
+        "statusMessage": "Peec context check..."
+      }]
+    }],
+    "SessionStart": [{
+      "hooks": [{
+        "type": "command",
+        "command": "python \"<repo>/hooks/peec-detect.py\" --session-start",
+        "timeout": 10,
+        "statusMessage": "Peec setup state..."
+      }]
+    }]
+  }
+}
+```
+
+| Trigger | Behavior |
+|---|---|
+| Session opens in a dir with `growth_loop/setup_state.json` (own dir or up to 2 parents) | Injects state summary + recommended skill into Claude's context |
+| Session opens elsewhere | Silent |
+| Prompt mentions a Peec keyword (`peec`, `sichtbarkeit`, `ai visibility`, `/start-peec`, …) | Injects setup hint or current state |
+| Prompt is unrelated | Silent |
+
+Output is a JSON envelope (`hookSpecificOutput.additionalContext`) per the Claude Code hook schema — Claude sees it as system context and decides whether to act.
+
+If you change the hook config, run `/hooks` once or restart Claude Code so the settings watcher reloads.
 
 ### Tool matrix
 
