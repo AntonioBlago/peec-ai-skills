@@ -10,10 +10,11 @@ user-invocable: true
 For one Peec prompt that the brand is losing, produce one publish-ready content brief: sub-queries, verbatim buyer pains, competitor breakdown, outline, focus keywords, and outreach targets.
 
 ## Input
-- `project_id` — Peec project
+- `project_id` — Peec project (read from `setup_state.json` per pre-flight; do not re-resolve)
 - `prompt_id` — the target prompt (must have ≥24h of data)
 - optional `date_range` — default last 28 days
-- optional `language` — default `de`, accepts `en`
+- `language` — read from `setup_state.json` (`prompt_language`); user can override per-run, but never default to `en` silently
+- `target_country` — read from `setup_state.json`; drives forum source picks (DE→reddit/r/de+gutefrage+t3n, AT→reddit+derstandard, US→reddit+quora, CH→reddit/r/de+r/fr) and SERP/GSC market filters
 
 ## Output
 One markdown brief per prompt, saved at `briefs/<YYYY-MM-DD>_<prompt-slug>/brief.md`, plus the raw data next to it (`competitor-urls.json`, `forum-pains.json`, `scoring.json`). No dashboards.
@@ -31,6 +32,21 @@ Do not use when:
 ---
 
 ## Pipeline
+
+### 0. Pre-flight — setup state required
+
+Per [`_shared/SETUP_STATE.md`](../_shared/SETUP_STATE.md), this skill refuses to run without a completed setup:
+
+```
+Read <project>/growth_loop/setup_state.json
+If missing OR completed_at missing OR phases_completed lacks
+   {competitors, prompts, topics, tags}:
+     STOP. Output:
+       "No Peec setup state found at <project>/growth_loop/setup_state.json.
+        Run /ai-visibility-setup first."
+If completed_at older than 90 days: WARN once, continue.
+Use peec_project_id from state — don't re-resolve via list_projects.
+```
 
 ### 1. Find the gap URLs
 

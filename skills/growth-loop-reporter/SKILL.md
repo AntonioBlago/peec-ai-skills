@@ -39,6 +39,21 @@ Do not use when:
 
 ## Pipeline
 
+### 0. Pre-flight — setup state required
+
+Per [`_shared/SETUP_STATE.md`](../_shared/SETUP_STATE.md), this skill refuses to run without a completed setup:
+
+```
+Read <project>/growth_loop/setup_state.json
+If missing OR completed_at missing OR phases_completed lacks
+   {competitors, prompts, topics, tags}:
+     STOP. Output:
+       "No Peec setup state found at <project>/growth_loop/setup_state.json.
+        Run /ai-visibility-setup first."
+If completed_at older than 90 days: WARN once, continue.
+Use peec_project_id from state — don't re-resolve via list_projects.
+```
+
 ### 1. Pull time-series of core metrics
 
 ```

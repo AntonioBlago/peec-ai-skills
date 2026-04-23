@@ -61,7 +61,30 @@ All skills are **user-invocable** — Claude Code triggers them automatically wh
 
 **Required:**
 - [Claude Code](https://claude.com/claude-code) (CLI, VS Code extension, or JetBrains plugin)
-- Peec AI MCP server connected — [official docs](https://app.peec.ai) (provides `mcp__peec-ai__*` tools)
+- Peec AI MCP server connected (provides `mcp__peec-ai__*` tools — see below)
+
+### Peec AI — hosted MCP (OAuth, zero install)
+
+Peec AI ships a remote MCP server at `https://api.peec.ai/mcp` with OAuth — no API key file, just a browser redirect on first use.
+
+```bash
+claude mcp add peec-ai --transport streamable-http https://api.peec.ai/mcp
+```
+
+…or add it directly to your Claude Code `settings.json` / `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "peec-ai": {
+      "type": "http",
+      "url": "https://api.peec.ai/mcp"
+    }
+  }
+}
+```
+
+The first time any skill calls a `mcp__peec-ai__*` tool, Claude Code opens a browser to sign you in to Peec AI and authorize access. Tokens persist; subsequent runs are silent. Full docs: [docs.peec.ai/mcp/setup](https://docs.peec.ai/mcp/setup).
 
 **Optional but strongly recommended:**
 
@@ -116,6 +139,22 @@ Then add to Claude Code `settings.json`:
 ```
 
 Credentials can also live in a `.env` file in your project root instead of the `env` block. Repo: [github.com/AntonioBlago/skillmind](https://github.com/AntonioBlago/skillmind).
+
+### How skills remember setup (`setup_state.json`)
+
+Setup is expensive — discovering competitors from real AI chats, designing 20 funnel-spread prompts, building taxonomy. You don't want it re-run from scratch every time the orchestrator asks "what next?". So the skills share **one** state file:
+
+```
+<project>/growth_loop/setup_state.json
+```
+
+- **`ai-visibility-setup`** owns it: reads at Phase 0 to decide `full | audit | partial | skip`, writes at Phase 9 with merged phases + a fresh count snapshot + the resolved `target_country` / `prompt_language`.
+- **All other skills** (`ai-growth-agent`, `peec-content-intel`, `content-cluster-builder`, `citation-outreach`, `growth-loop-reporter`) refuse to run without it. If the file is missing, they output one line:
+  > `No Peec setup state found at <project>/growth_loop/setup_state.json. Run /ai-visibility-setup first.`
+
+This means: every consumer skill knows the project ID, the language to write briefs in, the country to filter SERPs by, and which forums to mine — without re-asking you and without silently defaulting to English. Setup older than 90 days triggers a warning; older than that without `audit` mode is a yellow flag in any output.
+
+Schema and full read/write protocol: [`skills/_shared/SETUP_STATE.md`](skills/_shared/SETUP_STATE.md).
 
 ### Tool matrix
 

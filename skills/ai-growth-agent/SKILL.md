@@ -59,9 +59,25 @@ One full cycle: **1 week** for active projects, **4 weeks** for maintenance.
 
 ## Pipeline
 
+### 0. Pre-flight — setup state required
+
+Per [`_shared/SETUP_STATE.md`](../_shared/SETUP_STATE.md), this skill refuses to run without a completed setup. Before anything else:
+
+```
+Read <project>/growth_loop/setup_state.json
+If file missing OR completed_at missing OR phases_completed lacks
+   {competitors, prompts, topics, tags}:
+     STOP. Output exactly:
+       "No Peec setup state found at <project>/growth_loop/setup_state.json.
+        Run /ai-visibility-setup first."
+     Do not bootstrap setup yourself — that is ai-visibility-setup's job.
+If completed_at older than 90 days: WARN once, continue.
+Use peec_project_id from state — do not call list_projects again.
+```
+
 ### 1. Read state
 ```
-mcp__peec-ai__list_projects                       → resolve project
+# project_id already resolved from setup_state.json (no list_projects needed)
 mcp__peec-ai__get_brand_report(dimensions=["date"], start_date=-28d)
 Read: <project>/growth_loop/*_learnings.json      (may not exist)
 Read: <project>/growth_loop/decisions_log.md      (may not exist)
@@ -174,7 +190,8 @@ Run content-write with:
   project_id: or_bf5b4228-7344-4f71-b231-c4396a7775f6
   focus_keyword: "KI-SEO Retainer"
   page_type: blog
-  language: de
+  language: de            # from setup_state.prompt_language
+  target_country: DE      # from setup_state.target_country
 
 ## Measurable in 4 weeks
 Visibility on pr_a38381d4: 0% → ≥15%. Aggregate visibility of zone

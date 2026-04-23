@@ -11,8 +11,19 @@ Take a Peec AI project from empty (or broken) to operator-ready: correct competi
 
 ## Input
 - `project_id` (resolved via `mcp__peec-ai__list_projects`)
-- Optional: `market` (default `DE`), `offer_keywords` (retainer, monthly, etc.), `own_domain`
-- Optional: `scope` — `full` | `competitors_only` | `prompts_only` | `taxonomy_only` (default `full`)
+- `target_country` — ISO 3166-1 alpha-2 (`DE`, `AT`, `CH`, `US`, `UK`, ...). Default `DE`. Drives SERP/GSC filters and forum source selection.
+- `prompt_language` — ISO 639-1 (`de`, `en`, `fr`, ...). Default = lowercase of `target_country` (`DE` → `de`). Drives the language Peec prompts are authored in.
+- Optional: `secondary_languages` — list, default `[]`. Used for multi-market projects (e.g. DE primary + EN secondary).
+- Optional: `offer_keywords` (retainer, monthly, etc.), `own_domain`
+- Optional: `scope` — `full` | `audit` | `partial:<phase>` | `competitors_only` | `prompts_only` | `taxonomy_only` (default: auto-detected from setup state, see Phase 0)
+
+**Resolving language/country at start:**
+1. If state file exists with these fields → use them, skip the question.
+2. Else if user passed them as arguments → use those.
+3. Else infer from `own_domain` TLD (`.de` → DE/de, `.at` → AT/de, `.ch` → CH/de + ask de/fr, `.com` → ASK).
+4. Else ASK the user **once** before Phase 1: "Target country (ISO, e.g. DE)? Prompt language (ISO, e.g. de)?". Persist the answer in state.
+
+Never silently default to `EN`/`en` when the project has no signal — this corrupts every downstream skill.
 
 ## Output
 A setup report with: before/after counts, funnel distribution (e.g. 5/5/5/5), the single **hero prompt** to win first, the refresh timeline (24h for fresh data), a categorized P0/P1/P2 backlog, and any user-preference memories saved. No dashboards.
@@ -29,6 +40,101 @@ A setup report with: before/after counts, funnel distribution (e.g. 5/5/5/5), th
 - Peec AI MCP connected (`mcp__peec-ai__*`)
 - Visibly AI MCP connected (`mcp__visiblyai__*`) — optional, only for GSC
 - GSC + GA4 connected inside Visibly AI (check via `get_google_connections`)
+
+## State
+
+This skill **owns** the setup state file. See [`_shared/SETUP_STATE.md`](../_shared/SETUP_STATE.md) for the full schema and protocol.
+- **Reads** `<project>/growth_loop/setup_state.json` at Phase 0 to decide the run mode (`full | audit | partial | skip`).
+- **Writes** the same file at the end of Phase 9 with merged `phases_completed` and a fresh `snapshot`.
+
+All other skills in this repo refuse to run without this file — never bootstrap a setup from inside another skill.
+
+---
+
+## Phase 0 — State check & mode selection
+
+Always runs first. Cheap (single file read + at most one parallel Peec read in brownfield case). Determines whether the rest of the run is needed at all.
+
+```
+1. Read <project>/growth_loop/setup_state.json
+
+2. If state file MISSING:
+   2a. Live-detect Peec content (parallel reads):
+         list_brands(project)
+         list_prompts(project, limit=5)
+         list_topics(project)
+         list_tags(project)
+   2b. If Peec is empty (≤2 brands AND ≤4 prompts AND ≤0 topics):
+         → mode = full     (greenfield — proceed to Phase 1)
+   2c. If Peec is populated (≥3 brands OR ≥5 prompts OR ≥1 topic):
+         → mode = import   (brownfield — see "Import mode" below)
+
+3. If state file PRESENT, branch on `completed_at`:
+     < 30 days ago       → mode = skip      (show summary, ASK user before continuing)
+     30–90 days ago      → mode = audit     (live-diff snapshot, only redo drifted phases)
+     > 90 days ago       → mode = full      (warn: stale)
+
+4. If user passed an explicit `scope`, that wins over auto-detection.
+
+5. Print one line:
+     "Setup state: <found|missing|imported> · age: N days · mode: <full|import|audit|partial|skip>"
+```
+
+### `import` mode (brownfield) — runs entirely inside Phase 0
+
+Per [`_shared/SETUP_STATE.md` §`import` mode](../_shared/SETUP_STATE.md), this mode reconstructs `setup_state.json` from live Peec data without re-doing discovery.
+
+```
+1. Show user one line:
+     "Detected existing Peec setup: <N> brands, <M> prompts, <T> topics, <G> tags."
+2. ASK three things at once (single user turn):
+     - "Import this as the setup state, or run full setup from scratch? [import/full]"
+     - "Target country (ISO, e.g. DE)?"
+     - "Prompt language (ISO, e.g. de)?"
+3. If user picks `import`:
+     a. Infer completed_at (NEVER default to now silently):
+          read created_at from list_brands + list_prompts;
+          completed_at = min(created_at across first 5 brands AND first 5 prompts)
+          If unavailable → list_chats(limit=1, sort=asc).timestamp
+          If still unavailable → ASK user one bucket question
+            ("when did you set this up? [today/past month/past quarter/past year/older]")
+            and map to a date.
+     b. Build state object:
+          phases_completed = inferred from non-empty buckets (brands≥3 → +competitors; etc.)
+          snapshot         = the counts just read
+          completed_at     = inferred per (a) above
+          imported_at      = now (UTC)
+          last_audit_at    = now
+          hero_prompt_id   = null
+          target_country, prompt_language = from user answers in step 2
+          notes            = "imported from existing Peec project on <imported_at>;
+                              original setup inferred at <completed_at>"
+          setup_version    = "1.1"
+     c. **Persist immediately** — atomic write to <project>/growth_loop/setup_state.json
+        (write to .tmp, then rename). Do not wait for any other phase.
+     d. Print:
+          "State imported: <project>/growth_loop/setup_state.json (phases: X/7).
+           Inferred setup date: <YYYY-MM-DD> (~N days ago).
+           Run /ai-growth-agent to pick the next move, or /ai-visibility-setup
+           partial:gsc_mapping to fill in skipped phases."
+     e. Exit Phase 0. Do NOT proceed to Phase 1 — import mode finishes here.
+        The user can now invoke any consumer skill; they will all read the freshly
+        written state. If they want missing phases (e.g. forum_mining never happened),
+        they explicitly call partial:<phase>.
+4. If user picks `full`:
+     CONFIRM ONCE MORE: "Full setup will create new prompts/topics/tags alongside
+     the existing ones. Proceed? [yes/no]"
+     On yes → mode = full, proceed to Phase 1.
+     On no  → exit cleanly.
+```
+
+**`skip` mode behaviour:** show the existing snapshot (counts, phases, hero_prompt_id) and ask "Re-run anyway? [audit / partial:<phase> / full / no]". Do not auto-run.
+
+**`audit` mode behaviour:** call `list_brands / list_prompts / list_topics / list_tags` and compare counts to `snapshot`. For each phase where drift > 20% (or a P0 red flag from Phase 1 reappears), re-run only that phase. Append `last_audit_at` on write.
+
+**`partial:<phase>` mode:** jump straight to the named phase, skip everything else.
+
+If `mode == skip` and user declines re-run, exit cleanly with a 3-line summary — no further phases.
 
 ---
 
@@ -397,6 +503,31 @@ mcp__peec-ai__get_actions(project_id, scope="ugc", domain="youtube.com", ...)
 ```
 
 Deliver as concrete outreach list + content-format guidance from the actions' `text` column.
+
+### Persist setup state (mandatory final step)
+
+Before the deliverable summary, write the state file per [`_shared/SETUP_STATE.md`](../_shared/SETUP_STATE.md):
+
+```
+1. Read <project>/growth_loop/setup_state.json (if present).
+2. Merge:
+     phases_completed    = union(old, phases actually run this session)
+     snapshot            = fresh counts from list_brands/list_prompts/list_topics/list_tags
+                           called moments ago in this phase
+     completed_at        = keep old if present, else now (UTC ISO8601)
+     last_audit_at       = now ONLY if this run was mode=audit
+     hero_prompt_id      = the one selected in Phase 9
+     peec_project_id, domain = from session context
+     target_country      = from input (resolved per "Resolving language/country" rules)
+     prompt_language     = from input
+     secondary_languages = from input (default [])
+     setup_version       = "1.1"
+3. Write atomically: write to setup_state.json.tmp, then rename.
+4. Print exactly one line in the run summary:
+     "State written: <project>/growth_loop/setup_state.json (phases: X/7)"
+```
+
+If `<project>/growth_loop/` does not exist, create it (this is the same directory the orchestrator and reporter use).
 
 ---
 
