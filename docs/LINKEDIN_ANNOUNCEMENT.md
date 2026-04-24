@@ -20,12 +20,12 @@
 >
 > Die sechs Skills (alle für Claude Code, alle MIT):
 >
-> 1. `ai-visibility-setup` — Peec-Projekt in 9 Phasen komplett aufsetzen
+> 1. `peec-setup` — Peec-Projekt in 9 Phasen komplett aufsetzen
 > 2. `peec-content-intel` — Content-Gap-Analyse per Peec + Query Fan-Out
-> 3. `content-cluster-builder` — Strategische Themen-Zonen statt Keyword-Clustern
-> 4. `citation-outreach` — Editorial + Reddit/Gutefrage + YouTube-Pitches priorisiert
-> 5. `growth-loop-reporter` — Wöchentlicher Loop-Closer mit Stop-Doing-Liste
-> 6. `ai-growth-agent` — **Orchestrator.** Liefert *eine* Entscheidung, kein Dashboard.
+> 3. `peec-cluster` — Strategische Themen-Zonen statt Keyword-Clustern
+> 4. `peec-outreach` — Editorial + Reddit/Gutefrage + YouTube-Pitches priorisiert
+> 5. `peec-report` — Wöchentlicher Loop-Closer mit Stop-Doing-Liste
+> 6. `peec-agent` — **Orchestrator.** Liefert *eine* Entscheidung, kein Dashboard.
 >
 > Live-getestet an einem echten Projekt mit 47 Peec-Prompts — der Agent identifizierte die eine Zone mit höchstem Hebel (Decision-Stage-Lücke im Retainer-Angebot) und gab eine Action mit Deadline + Erfolgsmetrik aus.
 >
@@ -44,7 +44,7 @@
 > 6 Skills, die zusammen einen kompletten Growth-Loop für AI-Sichtbarkeit abbilden:
 > Setup → Analyse → Cluster-Strategie → Outreach → Reporting → **Decision**.
 >
-> Der Orchestrator-Skill `@ai-growth-agent` ist der Kern: er scannt dein Peec-Projekt, sucht den größten Hebel, entscheidet die eine wichtigste Aktion — kein Dashboard, sondern eine Exekution-Anweisung mit Deadline und Erfolgsmetrik.
+> Der Orchestrator-Skill `@peec-agent` ist der Kern: er scannt dein Peec-Projekt, sucht den größten Hebel, entscheidet die eine wichtigste Aktion — kein Dashboard, sondern eine Exekution-Anweisung mit Deadline und Erfolgsmetrik.
 >
 > Optional mit Visibly AI MCP (backlinks, onpage, query-fanout coverage), funktioniert aber auch ohne.
 >

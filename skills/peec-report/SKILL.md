@@ -1,5 +1,5 @@
 ---
-name: growth-loop-reporter
+name: peec-report
 description: Weekly / monthly closed-loop reporter for Peec AI visibility growth. Measures what moved (visibility per prompt, cluster, zone) against what was invested (content published, pitches sent, forum answers), detects winning patterns, and outputs a ranked next-actions list — not a dashboard. Closes the feedback loop for the growth agent. Use weekly for active projects or monthly for maintenance-mode.
 user-invocable: true
 ---
@@ -19,16 +19,16 @@ Output is a short narrative + actions, not a dashboard. Fifteen charts don't get
 - `project_id` — Peec project
 - `reporting_window` — `weekly` | `monthly` | `quarterly`
 - optional `baseline_date` — default 28 / 90 / 180 days back
-- optional `include_clusters` — auto-detected via `zone:*` tags if `content-cluster-builder` has run
+- optional `include_clusters` — auto-detected via `zone:*` tags if `peec-cluster` has run
 
 ## Output
 - One narrative at `<project>/growth_loop/YYYY-MM-DD_report.md` (schema below)
-- One `learnings.json` with winners / losers / surprises / next_actions / stop_doing — consumed by the next `content-cluster-builder` and `citation-outreach` runs as priors
+- One `learnings.json` with winners / losers / surprises / next_actions / stop_doing — consumed by the next `peec-cluster` and `peec-outreach` runs as priors
 
 ## When to use
 - Weekly for active projects with running content + outreach
 - Monthly for retainer projects in maintenance
-- Quarterly as strategy review — feeds the next `content-cluster-builder` run
+- Quarterly as strategy review — feeds the next `peec-cluster` run
 - After a launch, publication, or new zone going live
 
 Do not use when:
@@ -49,7 +49,7 @@ If missing OR completed_at missing OR phases_completed lacks
    {competitors, prompts, topics, tags}:
      STOP. Output:
        "No Peec setup state found at <project>/growth_loop/setup_state.json.
-        Run /ai-visibility-setup first."
+        Run /peec-setup first."
 If completed_at older than 90 days: WARN once, continue.
 Use peec_project_id from state — don't re-resolve via list_projects.
 ```
@@ -145,7 +145,7 @@ Claude synthesizes a narrative **≤400 words** using the schema below.
 
 ### 7. Persist learnings
 
-Save to `<project>/growth_loop/YYYY-MM-DD_learnings.json` — used by the next runs of `content-cluster-builder` and `citation-outreach` as priors.
+Save to `<project>/growth_loop/YYYY-MM-DD_learnings.json` — used by the next runs of `peec-cluster` and `peec-outreach` as priors.
 
 ---
 

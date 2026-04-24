@@ -1,5 +1,5 @@
 ---
-name: content-cluster-builder
+name: peec-cluster
 description: Turns a Peec AI prompt set into strategic content zones — not keyword groups. Groups prompts by buyer intent + funnel stage + visibility gap + shared demand signals, producing 4–8 "content zones" with the competitive weakness to attack, supporting evidence (forum quotes, SERP patterns), and a rank-ordered next-move per zone. Use when a Peec project has 20+ prompts and needs a topic architecture — not a flat content calendar. Output is a strategic map, not a list.
 user-invocable: true
 ---
@@ -28,17 +28,17 @@ If a candidate zone fails any axis, it gets merged or dropped.
 - optional `focus_funnel_stage` — restrict to one stage
 
 ## Output
-One markdown zone map (schema in §Output schema), plus one Peec tag per zone (`zone:<slug>`) with all prompts retagged, so `growth-loop-reporter` can measure zone lift later.
+One markdown zone map (schema in §Output schema), plus one Peec tag per zone (`zone:<slug>`) with all prompts retagged, so `peec-report` can measure zone lift later.
 
 ## When to use
 - ≥20 Peec prompts and the team has lost the overview
-- After `@ai-visibility-setup`, before `@content-write` per article
+- After `@peec-setup`, before `@content-write` per article
 - Quarterly strategy refresh
 - Before an investment conversation ("what is our AI content strategy?")
 
 Do not use when:
 - <10 prompts (not enough mass for real zones)
-- Prompts aren't split into Awareness / Consideration / Decision / Retention yet (run `@ai-visibility-setup` first)
+- Prompts aren't split into Awareness / Consideration / Decision / Retention yet (run `@peec-setup` first)
 
 ---
 
@@ -54,7 +54,7 @@ If missing OR completed_at missing OR phases_completed lacks
    {competitors, prompts, topics, tags}:
      STOP. Output:
        "No Peec setup state found at <project>/growth_loop/setup_state.json.
-        Run /ai-visibility-setup first."
+        Run /peec-setup first."
 If completed_at older than 90 days: WARN once, continue.
 Use peec_project_id from state — don't re-resolve via list_projects.
 ```
@@ -129,7 +129,7 @@ Four checks, all must pass:
 
 Zones that fail get merged to nearest neighbor or dropped.
 
-### 5. Extract 6 components per valid zone
+### 5. Extract 7 components per valid zone
 
 | Component | Source |
 |---|---|
@@ -138,7 +138,21 @@ Zones that fail get merged to nearest neighbor or dropped.
 | **Funnel span** | TOFU / MOFU / BOFU / Retention |
 | **Top 5 prompts** | sorted by combined score |
 | **Competitor structural weakness** | from `peec-content-intel`: what's missing across all competitors in this zone |
-| **One-move action** | concrete verb, concrete artifact, concrete channel — no "analyze X", instead "write article Y with structure Z and pitch at Z1, Z2" |
+| **Target `page_type`** | **REQUIRED.** Picked from `setup_state.page_type_taxonomy`. Algorithm: (1) aggregate top-url classifications of competitors in the zone; (2) map to the closest allowed page_type via the matrix in `_shared/SETUP_STATE.md`; (3) if no mapping exists (zone competitors all `LISTICLE` but your taxonomy has no `comparison` or `pillar`) → switch the one-move to **outreach** not content. |
+| **One-move action** | concrete verb, concrete artifact, concrete channel — no "analyze X", instead "publish `landing_page` at `/seo-retainer` with structure Z, pitch at D1, D2". Must reference the chosen `page_type` literally. |
+
+**Page-type decision examples:**
+
+| business_type | Zone top_cls histogram | Chosen page_type | One-move |
+|---|---|---|---|
+| b2b-service | PRODUCT_PAGE × 5, COMPARISON × 2 | `landing_page` | Build `/seo-retainer` LP + comparison block |
+| b2b-service | LISTICLE × 5 (all "best X in Germany") | **no content match** | Switch to `/peec-outreach` — pitch for inclusion |
+| b2c-ecommerce | PRODUCT_PAGE × 4, CATEGORY_PAGE × 3 | `collection` + `pdp` | Optimize collection `/shoes/running` + 3 high-intent PDPs |
+| b2b-saas | ARTICLE × 3, HOW_TO × 2 | `use_case` | Build `/integrations/shopify-seo` use-case page |
+| info-product | ARTICLE × 4, LISTICLE × 2 | `sales_page` | Long-form sales page with 7-step pitch |
+| local-service | HOMEPAGE × 4 (local competitors) | `local_landing` | Build `/seo-agentur-koblenz` with NAP + GMB proof |
+
+If all zones of a project end up with "switch to outreach" because nothing in the taxonomy matches competitor URL classifications → **flag a taxonomy mismatch P0 in the zone map**. That's a signal the `business_type` in `setup_state.json` is wrong.
 
 ### 6. Rank zones by potential impact
 
@@ -158,7 +172,7 @@ for each prompt in zone:
   mcp__peec-ai__update_prompt(project_id, prompt_id, tag_ids=[..., zone_tag_id])
 ```
 
-This is the hook `growth-loop-reporter` uses to track zone performance over time.
+This is the hook `peec-report` uses to track zone performance over time.
 
 ---
 
@@ -172,15 +186,16 @@ This is the hook `growth-loop-reporter` uses to track zone performance over time
 **Thesis:** <2 sentences>
 **Funnel:** Consideration → Decision
 **Prompts:** 7 (see appendix A)
+**Target page_type:** `landing_page`  *(validated against setup_state.page_type_taxonomy)*
 
 **Competitor weakness:**
 - None of the top-5 competitor URLs address <topic X>
 - 4 of 5 say nothing about <pricing / retainer / methodology>
 
 **ONE MOVE NOW:**
-> Write a HOW-TO-GUIDE, title "<concrete>", H2 outline <concrete>,
-> publish at `/blog/<slug>`, then within 7 days pitch at
-> <domain 1 from get_actions>, <domain 2>, and answer <reddit URL>.
+> Build `landing_page` at `/seo-retainer` with H2 outline <concrete>,
+> then within 7 days pitch at <domain 1 from get_actions>, <domain 2>,
+> and answer <reddit URL>.
 
 **Success metric (measure after 6 weeks):**
 Peec visibility across the 7 prompts: avg X% → Y%.
@@ -222,4 +237,4 @@ A zone map is only complete when:
 - Do not ship a zone map where all zones are Awareness — Decision coverage is often more valuable than five Awareness clusters
 - Do not create a zone without a named competitor weakness — if you can't name what they do wrong, the zone isn't real
 - Do not return more than 8 zones — 12 zones means 12 half-finished topics; 5 zones means 5 topics you win
-- Do not skip the tag persistence step — without tags, `growth-loop-reporter` has nothing to attribute against
+- Do not skip the tag persistence step — without tags, `peec-report` has nothing to attribute against

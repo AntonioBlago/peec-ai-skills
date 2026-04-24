@@ -1,6 +1,6 @@
 ---
-name: skillmind-learner
-description: Cross-project pattern layer for the Peec AI growth loop. After any Peec skill completes (or after growth-loop-reporter closes a cycle), extract 1–3 concrete patterns from the output and persist them to SkillMind via mcp__skillmind__add_pattern / remember. On the next orchestrator run, recall matching patterns and pass them in as priors — so lessons learned on project A inform decisions on project B. Use when a Peec skill has produced an artifact (brief, zone map, outreach log, decision, learnings.json) worth remembering.
+name: peec-learn
+description: Cross-project pattern layer for the Peec AI growth loop. After any Peec skill completes (or after peec-report closes a cycle), extract 1–3 concrete patterns from the output and persist them to SkillMind via mcp__skillmind__add_pattern / remember. On the next orchestrator run, recall matching patterns and pass them in as priors — so lessons learned on project A inform decisions on project B. Use when a Peec skill has produced an artifact (brief, zone map, outreach log, decision, learnings.json) worth remembering.
 user-invocable: true
 ---
 
@@ -12,13 +12,13 @@ Turn project-local Peec outputs into cross-project patterns. Each run does two t
 1. **Write** — extract 1–3 patterns from a just-produced artifact (decision, brief, zone map, outreach log, learnings.json) and store them in SkillMind with tags so they can be retrieved later.
 2. **Read** — on request, recall patterns matching a project / skill / gap type and hand them back as priors for the next orchestrator cycle.
 
-This is the memory layer beneath `growth-loop-reporter`: that skill persists learnings *for the project*, this skill promotes them *across projects*.
+This is the memory layer beneath `peec-report`: that skill persists learnings *for the project*, this skill promotes them *across projects*.
 
 ## Input
 
 For **write** mode:
 - `project_id` — Peec project the artifact came from
-- `source_skill` — which skill produced the artifact (`ai-growth-agent`, `content-cluster-builder`, `citation-outreach`, `peec-content-intel`, `growth-loop-reporter`)
+- `source_skill` — which skill produced the artifact (`peec-agent`, `peec-cluster`, `peec-outreach`, `peec-content-intel`, `peec-report`)
 - `artifact_path` or `artifact_content` — the file or inline content to extract from
 - optional `max_patterns` — default 3
 
@@ -39,16 +39,16 @@ Neither mode produces dashboards.
 ## When to use
 
 **Write:**
-- Right after `growth-loop-reporter` emits `learnings.json`
-- After a `citation-outreach` batch closes (week-end ritual)
-- After `content-cluster-builder` ships a zone map (zones become reusable taxonomy patterns)
-- After `ai-growth-agent` logs a decision whose 4-week metric came in (attribution is known)
+- Right after `peec-report` emits `learnings.json`
+- After a `peec-outreach` batch closes (week-end ritual)
+- After `peec-cluster` ships a zone map (zones become reusable taxonomy patterns)
+- After `peec-agent` logs a decision whose 4-week metric came in (attribution is known)
 - After `peec-content-intel` ships a brief that later won its prompt (write the *retrospective* pattern, not the brief itself)
 
 **Read:**
-- At the top of `ai-growth-agent` Phase 1 (state read) — recall patterns tagged with the current gap type
-- At the start of `citation-outreach` — recall domain-class patterns with high historical citation gain
-- At the start of `content-cluster-builder` — recall zone-shape patterns that worked in adjacent projects
+- At the top of `peec-agent` Phase 1 (state read) — recall patterns tagged with the current gap type
+- At the start of `peec-outreach` — recall domain-class patterns with high historical citation gain
+- At the start of `peec-cluster` — recall zone-shape patterns that worked in adjacent projects
 
 Do not use when:
 - The artifact is <24h old and no outcome is measured yet (you'd persist speculation, not a pattern)
@@ -146,7 +146,7 @@ Score = `semantic_similarity × recency_decay × evidence_weight`
 
 ### 4. Return
 
-Return top-k as structured list. The caller (usually `ai-growth-agent`) uses them as priors in its Decision Framework.
+Return top-k as structured list. The caller (usually `peec-agent`) uses them as priors in its Decision Framework.
 
 ---
 
@@ -195,7 +195,7 @@ typically need 3–6 weeks to surface in LLM training signal — if they surface
 **Related patterns:** `pat_b12a` (reddit threads need authoritative first-5-sentences)
 ```
 
-Tags: `peec`, `source:citation-outreach`, `project:antonioblago`, `project:paroc`,
+Tags: `peec`, `source:peec-outreach`, `project:antonioblago`, `project:paroc`,
 `date:2026-04-22`, `gap:citation`, `channel:editorial`, `market:dach`, `funnel:decision`.
 
 ---
@@ -215,10 +215,10 @@ Tags: `peec`, `source:citation-outreach`, `project:antonioblago`, `project:paroc
 
 ## Handoff points (where other skills call this one)
 
-- `ai-growth-agent` Phase 1 → **read mode** with `query=<current gap type>` to load priors before deciding
-- `growth-loop-reporter` Phase 7 → **write mode** for each entry in `learnings.json.winners[]` and `.losers[]` with `source_skill="growth-loop-reporter"`
-- `citation-outreach` Phase 7 (post 4-week measurement) → **write mode** for each `status=citation_live` + measured lift row
-- `content-cluster-builder` Phase 7 (after zone tags exist 4+ weeks) → **write mode** for zones whose `tag:zone:*` visibility moved >10pp
+- `peec-agent` Phase 1 → **read mode** with `query=<current gap type>` to load priors before deciding
+- `peec-report` Phase 7 → **write mode** for each entry in `learnings.json.winners[]` and `.losers[]` with `source_skill="peec-report"`
+- `peec-outreach` Phase 7 (post 4-week measurement) → **write mode** for each `status=citation_live` + measured lift row
+- `peec-cluster` Phase 7 (after zone tags exist 4+ weeks) → **write mode** for zones whose `tag:zone:*` visibility moved >10pp
 
 ---
 

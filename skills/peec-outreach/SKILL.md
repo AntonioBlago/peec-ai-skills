@@ -1,5 +1,5 @@
 ---
-name: citation-outreach
+name: peec-outreach
 description: Turns Peec AI's get_actions recommendations + forum/UGC discovery into a prioritized outreach pipeline with pitch templates, contact extraction, status tracking, and success measurement. Goes beyond "here is a list of domains" — produces ready-to-send pitches, covers Reddit / Gutefrage / editorial / owned quadrants, and tracks citation gains week over week. Use when a Peec project has active competitor gaps and needs systematic off-site work, not just content production.
 user-invocable: true
 ---
@@ -18,10 +18,10 @@ Writing new content isn't enough — most AI-visibility lift comes from citation
 ## Output
 - One outreach tracker at `<project>/outreach/YYYY-Wkk_outreach_log.md` (schema below)
 - One ready-to-send pitch per queued target, filled with concrete quote + concrete offer
-- After 4 weeks: one attribution summary feeding into `growth-loop-reporter`
+- After 4 weeks: one attribution summary feeding into `peec-report`
 
 ## When to use
-- After `@ai-visibility-setup` Phase 8 or `@peec-content-intel` Phase 6 — when the opportunity list is in
+- After `@peec-setup` Phase 8 or `@peec-content-intel` Phase 6 — when the opportunity list is in
 - Weekly ritual: 3–5 quality pitches to stay independent of Google
 - Whenever Peec `get_actions` surfaces high-opportunity `editorial` / `ugc` / `reference` rows
 
@@ -43,7 +43,7 @@ If missing OR completed_at missing OR phases_completed lacks
    {competitors, prompts, topics, tags}:
      STOP. Output:
        "No Peec setup state found at <project>/growth_loop/setup_state.json.
-        Run /ai-visibility-setup first."
+        Run /peec-setup first."
 If completed_at older than 90 days: WARN once, continue.
 Use peec_project_id from state — don't re-resolve via list_projects.
 ```
@@ -179,7 +179,7 @@ mcp__peec-ai__get_brand_report(...)
 # own-brand visibility for prompts that had this URL as source
 ```
 
-Winners (citation gain > baseline) feed into `growth-loop-reporter` as a "working leverage pattern" — next cycle prioritizes similar targets.
+Winners (citation gain > baseline) feed into `peec-report` as a "working leverage pattern" — next cycle prioritizes similar targets.
 
 ---
 

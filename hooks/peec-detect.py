@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-peec-detect — shared Peec project detector for the peec-ai-skills hook + /start-peec.
+peec-detect — shared Peec project detector for the peec-ai-skills hook + /peec-start.
 
 Reads:
   - $CLAUDE_PROJECT_DIR or cwd as the project root
@@ -62,9 +62,9 @@ TRIGGER_KEYWORDS = {
     "peec ai", "sichtbarkeit", "ki-sichtbarkeit", "ki sichtbarkeit",
     "ai-sichtbarkeit", "ai sichtbarkeit", "wachstumsschleife",
     # Slash-style mentions (helps when user types "@peec" or refers to skills)
-    "/ai-visibility-setup", "/ai-growth-agent", "/peec-content-intel",
-    "/content-cluster-builder", "/citation-outreach", "/growth-loop-reporter",
-    "/start-peec",
+    "/peec-setup", "/peec-agent", "/peec-content-intel",
+    "/peec-cluster", "/peec-outreach", "/peec-report",
+    "/peec-start",
 }
 
 STATE_FILENAME = "setup_state.json"
@@ -159,14 +159,14 @@ def recommend_action(age_label: str, phases: list[str]) -> str:
     missing = required - set(phases or [])
     if missing:
         return (
-            f"/ai-visibility-setup partial:{sorted(missing)[0]} "
+            f"/peec-setup partial:{sorted(missing)[0]} "
             f"— missing phases: {sorted(missing)}"
         )
     if age_label == "very stale":
-        return "/ai-visibility-setup audit — setup older than 90 days"
+        return "/peec-setup audit — setup older than 90 days"
     if age_label == "stale":
-        return "/ai-growth-agent (then consider /ai-visibility-setup audit if drift detected)"
-    return "/ai-growth-agent — pick the single next move for this cycle"
+        return "/peec-agent (then consider /peec-setup audit if drift detected)"
+    return "/peec-agent — pick the single next move for this cycle"
 
 
 def build_no_state_hint(reason: str) -> str:
@@ -174,9 +174,9 @@ def build_no_state_hint(reason: str) -> str:
         "=== PEEC CONTEXT ===",
         f"No setup_state.json found (reason: {reason}).",
         "",
-        "RECOMMENDED NEXT ACTION: /start-peec",
+        "RECOMMENDED NEXT ACTION: /peec-start",
         "  → if Peec project exists with brands/prompts → import mode (no destructive setup)",
-        "  → if greenfield → run /ai-visibility-setup full",
+        "  → if greenfield → run /peec-setup full",
         "===================",
     ])
 

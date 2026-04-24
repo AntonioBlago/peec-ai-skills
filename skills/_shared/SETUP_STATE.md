@@ -12,7 +12,7 @@ All skills in this repo MUST follow this convention. Do not invent alternatives.
 <project>/growth_loop/setup_state.json
 ```
 
-`<project>` is the local working directory the user is operating in (the same root where `decisions_log.md`, `*_learnings.json`, and `patterns.md` live — see `ai-growth-agent/SKILL.md` §Output and `growth-loop-reporter/SKILL.md` §Output).
+`<project>` is the local working directory the user is operating in (the same root where `decisions_log.md`, `*_learnings.json`, and `patterns.md` live — see `peec-agent/SKILL.md` §Output and `peec-report/SKILL.md` §Output).
 
 If `<project>/growth_loop/` does not exist yet, the writer creates it.
 
@@ -27,9 +27,18 @@ If `<project>/growth_loop/` does not exist yet, the writer creates it.
   "target_country": "DE",
   "prompt_language": "de",
   "secondary_languages": [],
-  "setup_version": "1.1",
+  "setup_version": "1.2",
+  "business_type": "b2b-service",
+  "audience": {
+    "primary": "string (z.B. 'Shop-Owner DACH, 3-20 Mitarbeiter, Shopify')",
+    "buyer_personas": ["string", "..."],
+    "pain_points": ["string", "..."]
+  },
+  "page_type_taxonomy": ["pillar", "landing_page", "blog_post", "case_study", "comparison", "faq", "pricing"],
   "completed_at": "2026-04-23T14:30:00Z",
   "phases_completed": [
+    "business_type",
+    "audience",
     "competitors",
     "prompts",
     "topics",
@@ -54,20 +63,77 @@ If `<project>/growth_loop/` does not exist yet, the writer creates it.
 - `target_country` — ISO 3166-1 alpha-2 (`DE`, `AT`, `CH`, `US`, `UK`, ...). The market the brand is selling into. Used by all skills for SERP / GSC filters and forum-source choice (Reddit vs Gutefrage vs OMR vs Quora).
 - `prompt_language` — ISO 639-1 (`de`, `en`, `fr`, ...). The language Peec prompts are authored in. Drives content-brief language, outreach-pitch language, and which forums to mine. **Decoupled from `target_country`** because CH/de, CH/fr, BE/nl, US/es etc. are real cases.
 - `secondary_languages` — optional list for multi-market projects (e.g. `["en"]` when DE is primary but EN content is also produced). Empty array is the default.
+- `business_type` — one of `b2b-service` | `b2c-ecommerce` | `b2b-saas` | `info-product` | `local-service` | `marketplace`. Drives the allowed `page_type_taxonomy` below and all content-skill outputs. Required — never default silently.
+- `audience` — object with `primary` (one-sentence ICP), `buyer_personas` (list, e.g. `["Shop-Owner Shopify", "CMO B2B Dienstleister"]`), `pain_points` (list of verbatim pains, ideally mined from forums in Phase 7). Content briefs pull from this directly.
+- `page_type_taxonomy` — allowed page types for this `business_type`. Every content skill (peec-content-intel, peec-cluster) MUST pick a `page_type` from this list when producing briefs or zone actions. See "Business-type → page-type matrix" below.
 - `completed_at` — ISO 8601 UTC. Set on first successful end-to-end run.
 - `phases_completed` — append-only. Partial re-runs add missing phases; never reset.
 - `snapshot` — counts at the moment of `completed_at`. Used to detect drift via cheap live check.
 - `last_audit_at` — set when a re-run is performed in `audit` mode.
-- `setup_version` — bump when this schema changes; writers must migrate older versions. Current: `1.1`.
+- `setup_version` — bump when this schema changes; writers must migrate older versions. Current: `1.2`.
 
 **Migration from v1.0 → v1.1:** if reading a state file with `setup_version == "1.0"` (no `target_country` / `prompt_language`):
 - promote old `market` field (if present) into `target_country`; otherwise default to `DE`
 - default `prompt_language` to lowercase of `target_country` (`DE` → `de`)
 - write back with `setup_version = "1.1"` after the next successful run
 
+**Migration from v1.1 → v1.2:** if reading a state file with `setup_version == "1.1"` (no `business_type` / `audience` / `page_type_taxonomy`):
+- ASK the user once: "What business type is this? [b2b-service / b2c-ecommerce / b2b-saas / info-product / local-service / marketplace]"
+- ASK for audience: "One sentence on who the primary buyer is"
+- Generate `page_type_taxonomy` from the business-type matrix below
+- Write back with `setup_version = "1.2"` after the user answers. Never auto-guess — a wrong business_type corrupts every downstream page_type decision.
+
 ---
 
-## Read protocol — every skill except `ai-visibility-setup`
+## Business-type → page-type matrix
+
+Every content brief or zone one-move MUST name a `page_type` from this list. Skills (peec-content-intel, peec-cluster, peec-agent) that emit a move without a valid `page_type` are broken.
+
+| business_type | Allowed `page_type` values | Typical winning combo |
+|---|---|---|
+| **b2b-service** | `pillar`, `landing_page`, `blog_post`, `case_study`, `comparison`, `faq`, `pricing` | Decision-stage prompts → `landing_page` + `case_study`; Awareness → `pillar` + `blog_post` |
+| **b2c-ecommerce** | `pdp` (product detail), `collection`, `pillar`, `blog_post`, `guide`, `category_page`, `faq` | Decision → `pdp`; Consideration → `collection` + `comparison`; Awareness → `guide` + `blog_post` |
+| **b2b-saas** | `landing_page`, `integration`, `use_case`, `blog_post`, `comparison`, `docs`, `pricing` | Decision → `landing_page` + `use_case`; Retention → `docs` + `integration` |
+| **info-product** | `sales_page`, `webinar_lp`, `blog_post`, `case_study`, `faq`, `lead_magnet` | Decision → `sales_page`; Awareness → `blog_post` + `lead_magnet` |
+| **local-service** | `local_landing`, `landing_page`, `case_study`, `blog_post`, `faq` | Decision → `local_landing`; Awareness → `blog_post` |
+| **marketplace** | `collection`, `pdp`, `category_page`, `pillar`, `blog_post` | Most queries → `collection`; long-tail → `pdp` |
+
+**Page-type definitions:**
+- `pillar` — long-form topic hub, internally links to sub-articles, 3000+ words
+- `landing_page` — service/offer page with CTA, proof, pricing teaser; not a blog
+- `blog_post` — editorial article, time-stamped, non-evergreen OK
+- `pdp` — product detail page (Shopify-style); single SKU, variant selector, buy button
+- `collection` — Shopify-style collection / category, faceted filters, multiple products
+- `category_page` — editorial or SEO category hub (for non-Shopify CMSs)
+- `case_study` — one-client deep-dive with concrete metrics
+- `comparison` — "X vs Y" or matrix-style, transactional-intent
+- `faq` — Q&A structured data, answers specific questions
+- `pricing` — tiers, deliverables matrix, transparent costs
+- `local_landing` — location-specific landing with NAP, GMB integration
+- `integration` — SaaS integration detail page (e.g. `/integrations/shopify`)
+- `use_case` — SaaS vertical or JTBD page
+- `docs` — product documentation, versioned, retention-oriented
+- `sales_page` — long-form info-product sales page with pitch sequence
+- `webinar_lp` — event registration page with date + presenter
+- `lead_magnet` — gated content landing (ebook, checklist, template)
+- `guide` — evergreen how-to (often maps to HOW_TO_GUIDE in Peec's URL classification)
+
+**Mapping to Peec's url_classification** (from `get_url_report`):
+```
+pillar, blog_post, guide       → ARTICLE | HOW_TO_GUIDE
+landing_page, sales_page,      → PRODUCT_PAGE | HOMEPAGE
+pricing, local_landing
+pdp                            → PRODUCT_PAGE
+collection, category_page      → CATEGORY_PAGE
+case_study                     → ARTICLE
+comparison                     → COMPARISON | LISTICLE
+faq                            → ARTICLE | OTHER
+```
+Skills use this mapping to score competitor URLs against the user's `page_type_taxonomy` — if a zone's top competitors are all `CATEGORY_PAGE` but your `business_type=b2b-service` can't produce `collection`, the zone's one-move becomes **outreach to a listicle**, not content creation.
+
+---
+
+## Read protocol — every skill except `peec-setup`
 
 Before any other work, run this check:
 
@@ -77,11 +143,11 @@ Before any other work, run this check:
    {competitors, prompts, topics, tags}:
      STOP. Output exactly:
        "No Peec setup state found at <project>/growth_loop/setup_state.json.
-        Run /ai-visibility-setup first."
+        Run /peec-setup first."
      Do not attempt to bootstrap setup yourself.
 3. If completed_at is older than 90 days:
      WARN once in your output:
-       "Setup is N days old — consider /ai-visibility-setup audit before acting on the result."
+       "Setup is N days old — consider /peec-setup audit before acting on the result."
      Continue anyway.
 4. Use peec_project_id from state as the canonical project ID for this run.
    Do not call list_projects again unless explicitly overridden by the user.
@@ -95,11 +161,11 @@ Before any other work, run this check:
    Never default to English silently — if these fields are missing, treat the state as v1.0 and apply migration defaults from §Field rules.
 ```
 
-**Why a hard stop instead of falling through to setup:** each skill has a focused role. Discovery + competitor pruning + funnel design is the job of `ai-visibility-setup` alone — duplicating it inside every skill creates drift.
+**Why a hard stop instead of falling through to setup:** each skill has a focused role. Discovery + competitor pruning + funnel design is the job of `peec-setup` alone — duplicating it inside every skill creates drift.
 
 ---
 
-## Write protocol — `ai-visibility-setup` only
+## Write protocol — `peec-setup` only
 
 ```
 At the end of Phase 9 (or whichever phase concludes the run):
@@ -115,11 +181,11 @@ At the end of Phase 9 (or whichever phase concludes the run):
        "State written: <project>/growth_loop/setup_state.json (phases: X/7)"
 ```
 
-`ai-visibility-setup` also reads the file at Phase 0 to decide between `full | audit | partial | skip` (see that skill's Phase 0 section).
+`peec-setup` also reads the file at Phase 0 to decide between `full | audit | partial | skip` (see that skill's Phase 0 section).
 
 ---
 
-## Re-run modes (determined by Phase 0 of `ai-visibility-setup`)
+## Re-run modes (determined by Phase 0 of `peec-setup`)
 
 | State file | Live Peec content | Default mode | Behaviour |
 |---|---|---|---|
@@ -161,7 +227,7 @@ When the state file is missing **but** Peec already has content:
    Write atomically. Print:
      "State imported: <project>/growth_loop/setup_state.json (phases: X/7).
       Inferred setup date: <YYYY-MM-DD> (~N days ago).
-      Run /ai-growth-agent to pick the next move, or /ai-visibility-setup partial:gsc_mapping
+      Run /peec-agent to pick the next move, or /peec-setup partial:gsc_mapping
       to fill in skipped phases."
 
    **Inferring setup date:**

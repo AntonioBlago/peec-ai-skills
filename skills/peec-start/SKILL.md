@@ -1,6 +1,6 @@
 ---
-name: start-peec
-description: Single-entry slash command for the Peec AI growth loop. Detects whether the current working directory has a setup_state.json, what state it's in (missing / fresh / stale / very stale / brownfield-importable), and hands off to the right skill — /ai-visibility-setup (full or import or audit) or /ai-growth-agent. Use when the user says "/start-peec", "what should I do for Peec", "is my setup done", or any opening question about a Peec AI project where the next move is unclear.
+name: peec-start
+description: Single-entry slash command for the Peec AI growth loop. Detects whether the current working directory has a setup_state.json, what state it's in (missing / fresh / stale / very stale / brownfield-importable), and hands off to the right skill — /peec-setup (full or import or audit) or /peec-agent. Use when the user says "/peec-start", "what should I do for Peec", "is my setup done", or any opening question about a Peec AI project where the next move is unclear.
 user-invocable: true
 ---
 
@@ -22,7 +22,7 @@ A 4–8 line decision block, then exactly one skill invocation as the next step.
 - When a hook injects `=== PEEC PROJECT DETECTED ===` context
 
 Do not use when:
-- The user already named a specific skill (`/ai-growth-agent`, `/peec-content-intel`, etc.) — call that directly
+- The user already named a specific skill (`/peec-agent`, `/peec-content-intel`, etc.) — call that directly
 - The user is mid-execution of another skill — don't interrupt
 
 ---
@@ -51,8 +51,8 @@ Then:
 
 | Live Peec content | Decision |
 |---|---|
-| Empty (≤2 brands AND ≤4 prompts AND ≤0 topics) | Hand off to `/ai-visibility-setup` (mode = full, greenfield) |
-| Populated (≥3 brands OR ≥5 prompts OR ≥1 topic) | Hand off to `/ai-visibility-setup` (mode = import, brownfield — see [`_shared/SETUP_STATE.md`](../_shared/SETUP_STATE.md) §`import` mode) |
+| Empty (≤2 brands AND ≤4 prompts AND ≤0 topics) | Hand off to `/peec-setup` (mode = full, greenfield) |
+| Populated (≥3 brands OR ≥5 prompts OR ≥1 topic) | Hand off to `/peec-setup` (mode = import, brownfield — see [`_shared/SETUP_STATE.md`](../_shared/SETUP_STATE.md) §`import` mode) |
 | Peec MCP unreachable / no projects | STOP. Output: "No Peec MCP connection. Add it via `claude mcp add peec-ai --transport streamable-http https://api.peec.ai/mcp` then retry." |
 
 ### 3. Branch — state file present
@@ -61,16 +61,16 @@ Compute `age_days = now - completed_at`.
 
 **User-intent split:** if the user opened with an *observational* phrase ("wo stehe ich?", "wie ist mein status?", "checkup", "was ist der stand?", "show me the picture") → route to `/peec-checkup` regardless of age. The agent path is for *deciding the next move*; checkup is for *seeing the picture*. They are complementary.
 
-Otherwise (action-oriented intent — "was als nächstes?", "what's next", default `/start-peec` with no qualifier):
+Otherwise (action-oriented intent — "was als nächstes?", "what's next", default `/peec-start` with no qualifier):
 
 | Age | Decision |
 |---|---|
-| < 7 days, no actions logged | Hand off to `/peec-checkup` — too little data for `/ai-growth-agent` decisions, but checkup still surfaces setup health + early signals. |
-| 7–30 days | Hand off to `/ai-growth-agent` (which itself orchestrates `/peec-checkup` first) |
-| 30–90 days | Hand off to `/ai-growth-agent`; mention "consider /ai-visibility-setup audit if cluster recommendations look thin" |
-| > 90 days | Hand off to `/ai-visibility-setup` (mode = audit). Do not skip straight to growth-agent on stale taxonomy. |
+| < 7 days, no actions logged | Hand off to `/peec-checkup` — too little data for `/peec-agent` decisions, but checkup still surfaces setup health + early signals. |
+| 7–30 days | Hand off to `/peec-agent` (which itself orchestrates `/peec-checkup` first) |
+| 30–90 days | Hand off to `/peec-agent`; mention "consider /peec-setup audit if cluster recommendations look thin" |
+| > 90 days | Hand off to `/peec-setup` (mode = audit). Do not skip straight to growth-agent on stale taxonomy. |
 
-If `phases_completed` is missing one of `{competitors, prompts, topics, tags}`, override the above and hand off to `/ai-visibility-setup partial:<missing-phase>` first.
+If `phases_completed` is missing one of `{competitors, prompts, topics, tags}`, override the above and hand off to `/peec-setup partial:<missing-phase>` first.
 
 ### 4. Output schema
 
@@ -90,7 +90,7 @@ Why: <one sentence — which signal in the state caused this branch>
 Next: <invoking the chosen skill now>
 ```
 
-Then immediately invoke that skill. Do not wait for confirmation unless the chosen branch is destructive (`/ai-visibility-setup` in `full` mode on a populated Peec project — that always confirms once).
+Then immediately invoke that skill. Do not wait for confirmation unless the chosen branch is destructive (`/peec-setup` in `full` mode on a populated Peec project — that always confirms once).
 
 ---
 
@@ -99,27 +99,27 @@ Then immediately invoke that skill. Do not wait for confirmation unless the chos
 Three frictions kept biting:
 1. New users open a Peec project, don't know which of 7 skills to call first.
 2. The hook (`hooks/peec-detect.py`) needs a manual counterpart for users who turned hooks off.
-3. The orchestrator (`/ai-growth-agent`) refuses to run without a setup state — so first-timers hit a dead end.
+3. The orchestrator (`/peec-agent`) refuses to run without a setup state — so first-timers hit a dead end.
 
-`start-peec` fixes all three by being the single safe entry point that always picks a defensible next step.
+`peec-start` fixes all three by being the single safe entry point that always picks a defensible next step.
 
 ## Relationship to other skills
 
 ```
-/start-peec
+/peec-start
    │
-   ├── no state, Peec empty       → /ai-visibility-setup (full)
-   ├── no state, Peec populated   → /ai-visibility-setup (import)
-   ├── state present, < 90 days   → /ai-growth-agent
-   ├── state present, > 90 days   → /ai-visibility-setup (audit)
-   └── state has missing phases   → /ai-visibility-setup (partial:<phase>)
+   ├── no state, Peec empty       → /peec-setup (full)
+   ├── no state, Peec populated   → /peec-setup (import)
+   ├── state present, < 90 days   → /peec-agent
+   ├── state present, > 90 days   → /peec-setup (audit)
+   └── state has missing phases   → /peec-setup (partial:<phase>)
 ```
 
-Never produces deliverables itself. Never bypasses the [`_shared/SETUP_STATE.md`](../_shared/SETUP_STATE.md) protocol — uses the same age thresholds and the same import-mode trigger as Phase 0 of `ai-visibility-setup`, so the dispatcher and the orchestrator agree on what "fresh" means.
+Never produces deliverables itself. Never bypasses the [`_shared/SETUP_STATE.md`](../_shared/SETUP_STATE.md) protocol — uses the same age thresholds and the same import-mode trigger as Phase 0 of `peec-setup`, so the dispatcher and the orchestrator agree on what "fresh" means.
 
 ## Guardrails
 
 - Never call `mcp__peec-ai__create_*` or `mcp__peec-ai__delete_*`. Dispatch only.
-- Never write `setup_state.json`. Only `/ai-visibility-setup` writes it.
+- Never write `setup_state.json`. Only `/peec-setup` writes it.
 - Never silently default `target_country` / `prompt_language`. If state is missing both AND user hasn't said, ASK once before handoff.
-- Never invoke more than one downstream skill per `/start-peec` run.
+- Never invoke more than one downstream skill per `/peec-start` run.

@@ -1,5 +1,5 @@
 ---
-name: ai-visibility-setup
+name: peec-setup
 description: End-to-end Peec AI project setup — competitor discovery from real AI chats, customer-journey prompt design across Awareness → Consideration → Decision → Retention, topic/tag taxonomy, GSC-based keyword mapping, forum pain-point mining (Reddit, Gutefrage, t3n, OMR), and a categorized executable backlog. Use when the user wants to set up, restructure, or audit a Peec AI project for their own brand or a client. 9 phases, full funnel coverage, real buyer language.
 user-invocable: true
 ---
@@ -115,7 +115,7 @@ Per [`_shared/SETUP_STATE.md` §`import` mode](../_shared/SETUP_STATE.md), this 
      d. Print:
           "State imported: <project>/growth_loop/setup_state.json (phases: X/7).
            Inferred setup date: <YYYY-MM-DD> (~N days ago).
-           Run /ai-growth-agent to pick the next move, or /ai-visibility-setup
+           Run /peec-agent to pick the next move, or /peec-setup
            partial:gsc_mapping to fill in skipped phases."
      e. Exit Phase 0. Do NOT proceed to Phase 1 — import mode finishes here.
         The user can now invoke any consumer skill; they will all read the freshly
@@ -135,6 +135,65 @@ Per [`_shared/SETUP_STATE.md` §`import` mode](../_shared/SETUP_STATE.md), this 
 **`partial:<phase>` mode:** jump straight to the named phase, skip everything else.
 
 If `mode == skip` and user declines re-run, exit cleanly with a 3-line summary — no further phases.
+
+---
+
+## Phase 0.5 — Business type, audience & page-type taxonomy
+
+Always runs in `full`, `import`, and `audit` modes (only skipped in `skip` mode). These three fields gate every downstream content decision — a wrong `business_type` corrupts every brief `/peec-content-intel` and every zone one-move `/peec-cluster` emits.
+
+```
+1. Read setup_state.json. If business_type + audience + page_type_taxonomy are all present
+   AND setup_version == "1.2" → skip this phase, continue to Phase 1.
+
+2. If any are missing, ASK the user in ONE turn:
+
+   "Before I build prompts, I need three things (all in one message is fine):
+
+    (a) Business type — pick one:
+        • b2b-service    (freelancer, agency, consulting — you sell hours or retainers)
+        • b2c-ecommerce  (D2C shop — you sell products, typically Shopify/WooCommerce)
+        • b2b-saas       (software product with subscriptions)
+        • info-product   (courses, memberships, digital products)
+        • local-service  (physical location, catchment-area business)
+        • marketplace    (multi-seller platform)
+
+    (b) Audience — one sentence on your primary buyer.
+        Example: 'Shop-Owner DACH, 3–20 Mitarbeiter, Shopify, 500k–5M Umsatz, Pain: 3 SEO-Agenturen gewechselt.'
+
+    (c) Optional: known buyer pain-points (comma-separated, forum language welcome)."
+
+3. Parse the answer. Build:
+     business_type      = one of the six canonical values
+     audience.primary   = the sentence
+     audience.buyer_personas = extracted nouns from (b) — e.g. ["Shop-Owner Shopify", "DACH"]
+     audience.pain_points = list from (c), else []
+
+4. Generate page_type_taxonomy from the business-type matrix
+   (see _shared/SETUP_STATE.md §"Business-type → page-type matrix"):
+
+     b2b-service    → ["pillar", "landing_page", "blog_post", "case_study", "comparison", "faq", "pricing"]
+     b2c-ecommerce  → ["pdp", "collection", "pillar", "blog_post", "guide", "category_page", "faq"]
+     b2b-saas       → ["landing_page", "integration", "use_case", "blog_post", "comparison", "docs", "pricing"]
+     info-product   → ["sales_page", "webinar_lp", "blog_post", "case_study", "faq", "lead_magnet"]
+     local-service  → ["local_landing", "landing_page", "case_study", "blog_post", "faq"]
+     marketplace    → ["collection", "pdp", "category_page", "pillar", "blog_post"]
+
+5. Add "business_type" and "audience" to phases_completed.
+   Set setup_version = "1.2".
+   Persist immediately (atomic write).
+
+6. Print one line:
+     "Business: <business_type> · Audience: <audience.primary> · Page types: <count>"
+```
+
+**Why this matters downstream:**
+- `/peec-content-intel` picks `page_type` per brief — if the brief says `pdp` but `business_type=b2b-service`, that's a rejected brief (caught by the taxonomy check).
+- `/peec-cluster` names a `page_type` per zone's one-move. If zone competitors are all `CATEGORY_PAGE` but your taxonomy can't produce `collection`, the zone's one-move switches to **outreach** instead of content creation — automatically.
+- `/peec-agent` reads `audience.pain_points` when generating Awareness-stage content recommendations.
+- `/peec-report` attributes by `page_type` to learn which types actually moved visibility.
+
+**Never guess `business_type`.** A `.de` domain selling shoes is not `b2b-service` even if it looks like a typical German agency URL. Always ASK once; persist once.
 
 ---
 

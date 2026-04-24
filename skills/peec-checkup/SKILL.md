@@ -28,13 +28,13 @@ One markdown report saved to `<project>/checkups/YYYY-MM-DD_checkup.md` (schema 
 - "Mein Setup checken" / "Was läuft falsch bei meinem Peec-Projekt?"
 - "Welche Verbesserungspotenziale gibt es?"
 - Onboarding a project from another consultant — first pass to see what was set up
-- Periodic ritual: monthly without 4 weeks of action history (use `growth-loop-reporter` instead when history exists)
+- Periodic ritual: monthly without 4 weeks of action history (use `peec-report` instead when history exists)
 - After someone else changed the Peec project and you want to see what shifted
 
 Do not use when:
-- The user wants ONE next action — that is `/ai-growth-agent`
-- The user wants attribution of past actions — that is `/growth-loop-reporter`
-- The project is empty — that is `/ai-visibility-setup` (full mode)
+- The user wants ONE next action — that is `/peec-agent`
+- The user wants attribution of past actions — that is `/peec-report`
+- The project is empty — that is `/peec-setup` (full mode)
 - The user wants to mutate Peec — every other skill, not this one
 
 ---
@@ -52,14 +52,14 @@ If present:
   Note the setup age in the report.
 If missing:
   Resolve project via mcp__peec-ai__list_projects.
-  Note in the report: "no setup_state.json — run /ai-visibility-setup
+  Note in the report: "no setup_state.json — run /peec-setup
   (mode: import) after this checkup to persist findings."
   Default target_country=DE, prompt_language=de UNLESS the user said otherwise.
 ```
 
-This is the only consumer skill allowed to run without a state file — because its whole job is to tell you whether you should run `ai-visibility-setup` next.
+This is the only consumer skill allowed to run without a state file — because its whole job is to tell you whether you should run `peec-setup` next.
 
-### 1. Setup-quality audit (read-only mirror of ai-visibility-setup Phase 1 + 2)
+### 1. Setup-quality audit (read-only mirror of peec-setup Phase 1 + 2)
 
 Parallel reads:
 ```
@@ -174,7 +174,7 @@ Multiplicative — anything with a 0 in any dimension is dropped (those are nois
 Take top `top_n` (default 5). For each, output:
 - One-sentence action
 - Which signal in §1 / §2 caused it (causal trace, not just "Peec said so")
-- Suggested handoff skill (`/peec-content-intel`, `/citation-outreach`, `/ai-visibility-setup partial:<phase>`)
+- Suggested handoff skill (`/peec-content-intel`, `/peec-outreach`, `/peec-setup partial:<phase>`)
 - Estimated effort (S/M/L)
 - Estimated 4-week metric impact (visibility delta on which prompt or zone)
 
@@ -277,7 +277,7 @@ If `days_with_data < 7` → mark sections 2 + 3 with **"insufficient data"** bad
 ## Guardrails
 
 - **Never call `mcp__peec-ai__create_*` or `delete_*` or `update_*`.** Pure read.
-- **Never write `setup_state.json`.** Only `ai-visibility-setup` writes it. If state was missing, the report tells the user to run `/ai-visibility-setup partial:import` to persist findings.
+- **Never write `setup_state.json`.** Only `peec-setup` writes it. If state was missing, the report tells the user to run `/peec-setup partial:import` to persist findings.
 - **Never invent insights from < 7 days of data.** Say "insufficient data" explicitly.
 - **Never silently assume language/country.** If state has them, use them. If not, ask once before §3.
 - **Never bury setup issues under content opportunities.** A Setup Health Score < 80% means the structural fix outranks any content recommendation in §4.
@@ -291,11 +291,11 @@ If `days_with_data < 7` → mark sections 2 + 3 with **"insufficient data"** bad
    ↓
    reports → user decides
    │
-   ├── if structural P0 → /ai-visibility-setup (partial / audit)
+   ├── if structural P0 → /peec-setup (partial / audit)
    ├── if specific prompt to win → /peec-content-intel
-   ├── if outreach gaps → /citation-outreach
-   ├── if you want ONE decisive next move → /ai-growth-agent
-   └── if you want time-series + attribution → /growth-loop-reporter (needs 4+ weeks)
+   ├── if outreach gaps → /peec-outreach
+   ├── if you want ONE decisive next move → /peec-agent
+   └── if you want time-series + attribution → /peec-report (needs 4+ weeks)
 ```
 
-`/start-peec` may route to `/peec-checkup` when the user's intent is observational ("how am I doing?") rather than action-driven ("what should I do?"). The two are complementary, not redundant: checkup is the lens, growth-agent is the trigger.
+`/peec-start` may route to `/peec-checkup` when the user's intent is observational ("how am I doing?") rather than action-driven ("what should I do?"). The two are complementary, not redundant: checkup is the lens, growth-agent is the trigger.

@@ -26,14 +26,14 @@ UNINSTALL=0
 ONLY=""
 
 SKILLS=(
-  ai-visibility-setup
+  peec-setup
   peec-content-intel
-  content-cluster-builder
-  citation-outreach
-  growth-loop-reporter
-  skillmind-learner
-  ai-growth-agent
-  start-peec
+  peec-cluster
+  peec-outreach
+  peec-report
+  peec-learn
+  peec-agent
+  peec-start
   peec-checkup
 )
 

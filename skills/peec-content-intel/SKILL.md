@@ -15,15 +15,39 @@ For one Peec prompt that the brand is losing, produce one publish-ready content 
 - optional `date_range` — default last 28 days
 - `language` — read from `setup_state.json` (`prompt_language`); user can override per-run, but never default to `en` silently
 - `target_country` — read from `setup_state.json`; drives forum source picks (DE→reddit/r/de+gutefrage+t3n, AT→reddit+derstandard, US→reddit+quora, CH→reddit/r/de+r/fr) and SERP/GSC market filters
+- `page_type` — **required**. Must be one of the values in `setup_state.page_type_taxonomy`. If the user doesn't pass it, the skill infers the best fit from the funnel stage of the target prompt + competitor top-url classifications, then ASKS the user to confirm ("Suggested page_type: `landing_page` (Decision-stage, competitors use PRODUCT_PAGE). OK? [y/n/override]"). Never guess silently — a brief with the wrong page_type is a wasted publish cycle.
+- `business_type` — read from `setup_state.json`. Used to validate `page_type` selection against the allowed taxonomy matrix.
+- `audience` — read from `setup_state.json`. `audience.primary` and `audience.pain_points` feed the brief's "Why this page wins" + "Voice / tonality" sections directly; do not restate them in the brief prose, USE them.
 
 ## Output
 One markdown brief per prompt, saved at `briefs/<YYYY-MM-DD>_<prompt-slug>/brief.md`, plus the raw data next to it (`competitor-urls.json`, `forum-pains.json`, `scoring.json`). No dashboards.
+
+Every brief starts with a **front-matter block** that downstream skills (`peec-report`, `peec-learn`) consume for attribution:
+
+```yaml
+---
+brief_id:      <YYYY-MM-DD>_<prompt-slug>
+prompt_id:     pr_xxxxxx
+business_type: b2b-service
+page_type:     landing_page           # MUST be in setup_state.page_type_taxonomy
+target_url:    /seo-retainer          # planned publish path
+funnel_stage:  Decision                # from the prompt's topic
+audience:
+  primary:     "Shop-Owner DACH, 3-20 MA, Shopify"
+  pain_hook:   "3 Agenturen gewechselt, keine Ergebnisse"
+success_metric_4w:
+  prompt_visibility: "0% → ≥15%"
+  zone_visibility:   "4% → ≥20%"
+---
+```
+
+A brief without this front-matter block is invalid and will be rejected by `peec-report`.
 
 ## When to use
 - "Which content wins Peec prompt X?"
 - "Analyze the sources competitors get cited for on prompt X"
 - "What's the content gap between me and competitor.de?"
-- Runs **after** `ai-visibility-setup` — the project must exist with structured prompts.
+- Runs **after** `peec-setup` — the project must exist with structured prompts.
 
 Do not use when:
 - Prompt has <24h of Peec data (no chats / sources yet)
@@ -43,7 +67,7 @@ If missing OR completed_at missing OR phases_completed lacks
    {competitors, prompts, topics, tags}:
      STOP. Output:
        "No Peec setup state found at <project>/growth_loop/setup_state.json.
-        Run /ai-visibility-setup first."
+        Run /peec-setup first."
 If completed_at older than 90 days: WARN once, continue.
 Use peec_project_id from state — don't re-resolve via list_projects.
 ```
@@ -257,4 +281,4 @@ Batch of 10 prompts: ~500–750 credits.
 - Do not run `onpage_analysis` on more than the top-3 URLs — credit drain
 - Do not mix funnel stages in the fan-out — a MOFU parent must not pull in TOFU sub-queries, or the brief dilutes
 - Do not judge a competitor by DR alone — weak content at high DR is still attackable; read the actual content via `get_url_content`
-- Do not run this skill before `ai-visibility-setup` — depends on structured prompts/topics/tags
+- Do not run this skill before `peec-setup` — depends on structured prompts/topics/tags

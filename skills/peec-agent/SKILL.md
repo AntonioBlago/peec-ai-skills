@@ -1,6 +1,6 @@
 ---
-name: ai-growth-agent
-description: Orchestrator for the 5 Peec AI growth skills (ai-visibility-setup, peec-content-intel, content-cluster-builder, citation-outreach, growth-loop-reporter). Reads project state and last learnings, detects the single highest-leverage gap, and returns exactly one next-move decision with a measurable 4-week metric — then hands off to the skill that executes it. Use when multiple priorities compete and you need one call, not a dashboard.
+name: peec-agent
+description: Orchestrator for the 5 Peec AI growth skills (peec-setup, peec-content-intel, peec-cluster, peec-outreach, peec-report). Reads project state and last learnings, detects the single highest-leverage gap, and returns exactly one next-move decision with a measurable 4-week metric — then hands off to the skill that executes it. Use when multiple priorities compete and you need one call, not a dashboard.
 user-invocable: true
 ---
 
@@ -23,7 +23,7 @@ One markdown document matching the schema in §5, plus one appended entry in `<p
 
 Do not use when:
 - The answer is already known — call the target skill directly
-- Peec project has <7 days of data — run `ai-visibility-setup` first
+- Peec project has <7 days of data — run `peec-setup` first
 
 ---
 
@@ -33,11 +33,11 @@ Do not use when:
      ┌─────────────────────────────────────────────────┐
      │                                                 │
      │  1. UNDERSTAND                                  │
-     │     ai-visibility-setup  (prompts + taxonomy)   │
+     │     peec-setup  (prompts + taxonomy)   │
      │     peec-content-intel   (demand signals)       │
      │                  ↓                              │
      │  2. ANALYZE                                     │
-     │     content-cluster-builder (zones)             │
+     │     peec-cluster (zones)             │
      │     peec-content-intel      (source intel)      │
      │                  ↓                              │
      │  3. DECIDE                                      │
@@ -45,10 +45,10 @@ Do not use when:
      │                  ↓                              │
      │  4. EXECUTE                                     │
      │     content-write     (new content)             │
-     │     citation-outreach (external citations)      │
+     │     peec-outreach (external citations)      │
      │                  ↓                              │
      │  5. LEARN                                       │
-     │     growth-loop-reporter                        │
+     │     peec-report                        │
      │                  ↓                              │
      └───────→ feedback into step 1 ────────────────────┘
 ```
@@ -69,8 +69,8 @@ If file missing OR completed_at missing OR phases_completed lacks
    {competitors, prompts, topics, tags}:
      STOP. Output exactly:
        "No Peec setup state found at <project>/growth_loop/setup_state.json.
-        Run /ai-visibility-setup first."
-     Do not bootstrap setup yourself — that is ai-visibility-setup's job.
+        Run /peec-setup first."
+     Do not bootstrap setup yourself — that is peec-setup's job.
 If completed_at older than 90 days: WARN once, continue.
 Use peec_project_id from state — do not call list_projects again.
 ```
@@ -114,12 +114,12 @@ Inputs come from the §1 checkup report — read its sections in this order:
 | Tier | Gap | Signal (from checkup) | Handoff |
 |---|---|---|---|
 | 1 | Data | `days_with_data < 7` in checkup §0 | STOP. Wait, do not force action. |
-| 2 | Setup quality | checkup §1 Setup Health < 80% OR any P0 finding | `ai-visibility-setup` (audit or partial:<phase>) |
-| 3 | Taxonomy mass | <20 active prompts OR any funnel stage <2 prompts (checkup §0) | `ai-visibility-setup partial:prompts` |
-| 4 | Cluster | 20+ prompts, no strategic `zone:*` tags (checkup §0 tags list) | `content-cluster-builder` |
+| 2 | Setup quality | checkup §1 Setup Health < 80% OR any P0 finding | `peec-setup` (audit or partial:<phase>) |
+| 3 | Taxonomy mass | <20 active prompts OR any funnel stage <2 prompts (checkup §0) | `peec-setup partial:prompts` |
+| 4 | Cluster | 20+ prompts, no strategic `zone:*` tags (checkup §0 tags list) | `peec-cluster` |
 | 5 | Content | Zones exist, but a losing hero prompt (checkup §2) has no own asset | `content-write` (external) or `peec-content-intel` for the brief |
-| 6 | Citation | Hero content exists, source diversity < 5 (checkup §2) OR `editorial`/`ugc` actions queued | `citation-outreach` |
-| 7 | Learning | Loop has been running 4+ weeks, no `growth_loop/*_report.md` files | `growth-loop-reporter` |
+| 6 | Citation | Hero content exists, source diversity < 5 (checkup §2) OR `editorial`/`ugc` actions queued | `peec-outreach` |
+| 7 | Learning | Loop has been running 4+ weeks, no `growth_loop/*_report.md` files | `peec-report` |
 
 **Rule:** Exactly one tier per cycle. If two tiers look tied, pick the lower number. Parallel work across tiers means the tiers weren't ranked properly — fix the ranking.
 
@@ -188,12 +188,12 @@ Checkpoint: <YYYY-MM-DD> — metric: <name + target>
 
 | Intent | Skill |
 |---|---|
-| Setup / taxonomy / competitors | `@ai-visibility-setup` |
-| Strategic zones from flat prompt set | `@content-cluster-builder` |
+| Setup / taxonomy / competitors | `@peec-setup` |
+| Strategic zones from flat prompt set | `@peec-cluster` |
 | Source / demand research for a prompt | `@peec-content-intel` |
 | New article (handled outside this repo) | `@content-write` |
-| External citations & outreach | `@citation-outreach` |
-| Weekly / monthly loop close | `@growth-loop-reporter` |
+| External citations & outreach | `@peec-outreach` |
+| Weekly / monthly loop close | `@peec-report` |
 
 ---
 
