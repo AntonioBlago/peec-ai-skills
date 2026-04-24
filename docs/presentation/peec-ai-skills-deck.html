@@ -851,58 +851,43 @@ Awareness flat at 24%.
   <div class="two-col">
     <div class="col col-l">
       <h3 class="s-h3">Three new fields in <code>setup_state.json</code></h3>
-<pre class="light">{
+<pre class="light" style="font-size:8pt; line-height:1.35;">{
   "setup_version": "1.2",
-
   "business_type": "b2b-service",
-  // one of: b2b-service | b2c-ecommerce
-  //       | b2b-saas | info-product
-  //       | local-service | marketplace
-
   "audience": {
-    "primary":         "Shop-Owner DACH 3-20 MA, Shopify,
-                        500k-5M Umsatz, 2-3 SEO-Agenturen
-                        gewechselt",
-    "buyer_personas":  [
-      "Shop-Owner Shopify DACH",
-      "E-Commerce Decider 500k-5M",
-      "SEO-fatigued Shop-Owner"
-    ],
-    "pain_points":     [
-      "verbrennt Budget ohne Return",
-      "Checklisten-SEO statt Strategie",
-      "3 Agenturen gewechselt"
-    ]
+    "primary":        "Shop-Owner DACH 3-20 MA, Shopify",
+    "buyer_personas": ["Shop-Owner Shopify DACH",
+                       "SEO-fatigued E-Commerce Decider"],
+    "pain_points":    ["verbrennt Budget",
+                       "3 Agenturen gewechselt"]
   },
-
   "page_type_taxonomy": [
     "pillar", "landing_page", "blog_post",
     "case_study", "comparison", "faq", "pricing"
   ]
-  // auto-generated from business_type
 }</pre>
+      <p class="legend">6 allowed <code>business_type</code> values &middot; <code>page_type_taxonomy</code> auto-generated from it (see next slide).</p>
     </div>
     <div class="col col-r">
       <h3 class="s-h3">Phase 0.5 &mdash; ask once, persist once</h3>
       <ul>
-        <li><strong>Never guessed.</strong> A <code>.de</code> shoe-shop is not a <code>b2b-service</code> even if the URL looks like a German agency.</li>
-        <li><strong>One turn, three answers.</strong> Business type, audience sentence, pain-points &mdash; captured in a single elicitation.</li>
-        <li><strong>Migration from v1.1.</strong> Reading a v1.1 state triggers Phase 0.5 on next <span class="tag">/peec-setup audit</span>.</li>
+        <li><strong>Never guessed.</strong> A <code>.de</code> shoe-shop is not a <code>b2b-service</code> &mdash; ask explicitly.</li>
+        <li><strong>One turn.</strong> Business type + audience + pain-points in one elicitation.</li>
+        <li><strong>Migration.</strong> v1.1 state triggers Phase 0.5 on next <span class="tag">/peec-setup audit</span>.</li>
       </ul>
 
       <h3 class="s-h3">Downstream consumers</h3>
       <table class="data">
-        <thead><tr><th>Skill</th><th>Reads</th></tr></thead>
         <tbody>
-          <tr><td><span class="tag">/peec-content-intel</span></td><td><code>page_type</code> REQUIRED per brief &middot; <code>audience</code> feeds copy angles</td></tr>
-          <tr><td><span class="tag">/peec-cluster</span></td><td>zone one-move must name a <code>page_type</code></td></tr>
-          <tr><td><span class="tag">/peec-agent</span></td><td><code>audience.pain_points</code> become priors for Awareness content</td></tr>
-          <tr><td><span class="tag">/peec-report</span></td><td>attributes visibility lift per <code>page_type</code></td></tr>
+          <tr><td style="width:38mm;"><span class="tag">/peec-content-intel</span></td><td><code>page_type</code> required per brief</td></tr>
+          <tr><td><span class="tag">/peec-cluster</span></td><td>zone one-move names a <code>page_type</code></td></tr>
+          <tr><td><span class="tag">/peec-agent</span></td><td><code>pain_points</code> as Awareness priors</td></tr>
+          <tr><td><span class="tag">/peec-report</span></td><td>attributes lift per <code>page_type</code></td></tr>
         </tbody>
       </table>
 
       <div class="info-box teal" style="margin-top:3mm;">
-        Wrong <code>business_type</code> corrupts every brief that follows. Changing it later = content graveyard. Ask once, ask early.
+        Wrong <code>business_type</code> corrupts every brief. Ask once, ask early.
       </div>
     </div>
   </div>
@@ -918,71 +903,51 @@ Awareness flat at 24%.
   <h1 class="s-title">Business-type &rarr; page-type matrix.</h1>
   <h2 class="s-sub">Every content move names a page type. The allowed set is not your preference &mdash; it is a constraint derived from what actually wins for your business model in AI answers.</h2>
 
-  <table class="data" style="margin-top:2mm;">
+  <table class="data" style="margin-top:2mm; font-size:9pt;">
     <thead>
       <tr>
-        <th style="width:30mm;">business_type</th>
+        <th style="width:26mm;">business_type</th>
         <th>Allowed <code>page_type</code> values</th>
-        <th style="width:60mm;">Typical winning combo</th>
+        <th style="width:52mm;">Typical winning combo</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>b2b-service</strong><br><span class="muted" style="font-size:8pt;">freelancer, agency, consulting</span></td>
+        <td><strong>b2b-service</strong><br><span class="muted" style="font-size:7.5pt;">freelancer, agency</span></td>
         <td><code>pillar</code> &middot; <code>landing_page</code> &middot; <code>blog_post</code> &middot; <code>case_study</code> &middot; <code>comparison</code> &middot; <code>faq</code> &middot; <code>pricing</code></td>
-        <td>Decision &rarr; <code>landing_page</code> + <code>case_study</code><br>Awareness &rarr; <code>pillar</code> + <code>blog_post</code></td>
+        <td>Decision &rarr; <code>landing_page</code> + <code>case_study</code></td>
       </tr>
       <tr>
-        <td><strong>b2c-ecommerce</strong><br><span class="muted" style="font-size:8pt;">D2C shop, Shopify</span></td>
+        <td><strong>b2c-ecommerce</strong><br><span class="muted" style="font-size:7.5pt;">D2C, Shopify</span></td>
         <td><code>pdp</code> &middot; <code>collection</code> &middot; <code>pillar</code> &middot; <code>blog_post</code> &middot; <code>guide</code> &middot; <code>category_page</code> &middot; <code>faq</code></td>
-        <td>Decision &rarr; <code>pdp</code><br>Consideration &rarr; <code>collection</code> + <code>comparison</code><br>Awareness &rarr; <code>guide</code> + <code>blog_post</code></td>
+        <td>Decision &rarr; <code>pdp</code> &middot; Consideration &rarr; <code>collection</code></td>
       </tr>
       <tr>
-        <td><strong>b2b-saas</strong><br><span class="muted" style="font-size:8pt;">subscription software</span></td>
+        <td><strong>b2b-saas</strong><br><span class="muted" style="font-size:7.5pt;">subscription SW</span></td>
         <td><code>landing_page</code> &middot; <code>integration</code> &middot; <code>use_case</code> &middot; <code>blog_post</code> &middot; <code>comparison</code> &middot; <code>docs</code> &middot; <code>pricing</code></td>
-        <td>Decision &rarr; <code>landing_page</code> + <code>use_case</code><br>Retention &rarr; <code>docs</code> + <code>integration</code></td>
+        <td>Decision &rarr; <code>use_case</code> &middot; Retention &rarr; <code>docs</code></td>
       </tr>
       <tr>
-        <td><strong>info-product</strong><br><span class="muted" style="font-size:8pt;">courses, memberships</span></td>
+        <td><strong>info-product</strong><br><span class="muted" style="font-size:7.5pt;">courses, memberships</span></td>
         <td><code>sales_page</code> &middot; <code>webinar_lp</code> &middot; <code>blog_post</code> &middot; <code>case_study</code> &middot; <code>faq</code> &middot; <code>lead_magnet</code></td>
-        <td>Decision &rarr; <code>sales_page</code><br>Awareness &rarr; <code>blog_post</code> + <code>lead_magnet</code></td>
+        <td>Decision &rarr; <code>sales_page</code></td>
       </tr>
       <tr>
-        <td><strong>local-service</strong><br><span class="muted" style="font-size:8pt;">catchment-area</span></td>
+        <td><strong>local-service</strong><br><span class="muted" style="font-size:7.5pt;">catchment-area</span></td>
         <td><code>local_landing</code> &middot; <code>landing_page</code> &middot; <code>case_study</code> &middot; <code>blog_post</code> &middot; <code>faq</code></td>
-        <td>Decision &rarr; <code>local_landing</code><br>Awareness &rarr; <code>blog_post</code></td>
+        <td>Decision &rarr; <code>local_landing</code></td>
       </tr>
       <tr>
-        <td><strong>marketplace</strong><br><span class="muted" style="font-size:8pt;">multi-seller platform</span></td>
+        <td><strong>marketplace</strong><br><span class="muted" style="font-size:7.5pt;">multi-seller</span></td>
         <td><code>collection</code> &middot; <code>pdp</code> &middot; <code>category_page</code> &middot; <code>pillar</code> &middot; <code>blog_post</code></td>
-        <td>Most queries &rarr; <code>collection</code><br>Long-tail &rarr; <code>pdp</code></td>
+        <td>Most queries &rarr; <code>collection</code></td>
       </tr>
     </tbody>
   </table>
 
-  <div class="two-col" style="margin-top:4mm;">
-    <div class="col col-l">
-      <h3 class="s-h3">Peec <code>url_classification</code> mapping</h3>
-<pre class="light" style="font-size:8.5pt;">pillar, blog_post, guide     -> ARTICLE | HOW_TO_GUIDE
-landing_page, sales_page,    -> PRODUCT_PAGE | HOMEPAGE
-pricing, local_landing
-pdp                          -> PRODUCT_PAGE
-collection, category_page    -> CATEGORY_PAGE
-case_study                   -> ARTICLE
-comparison                   -> COMPARISON | LISTICLE
-faq                          -> ARTICLE | OTHER</pre>
-      <p class="legend">Maps your taxonomy to what Peec actually observes in competitor URLs.</p>
-    </div>
-    <div class="col col-r">
-      <h3 class="s-h3">The auto-fallback rule</h3>
-      <div class="info-box">
-        If zone competitors dominate with a URL class your <code>business_type</code> cannot produce (e.g. LISTICLE for a <code>b2b-service</code>), <span class="tag">/peec-cluster</span> <strong>switches the zone's one-move from content to outreach</strong>. No content is written that can't win.
-      </div>
-      <div class="info-box dark" style="margin-top:3mm;">
-        <div class="info-box-title">Meta-rule</div>
-        If <em>every</em> zone ends up with "switch to outreach" &rarr; taxonomy mismatch P0. That signals a wrong <code>business_type</code> in state. Re-run Phase 0.5.
-      </div>
-    </div>
+  <div class="info-box" style="margin-top:4mm;">
+    <div class="info-box-title">Auto-fallback rule</div>
+    When a zone's top competitors cite a URL class your <code>business_type</code> cannot produce (e.g. LISTICLE for <code>b2b-service</code>), <span class="tag">/peec-cluster</span> <strong>switches the one-move from content to outreach</strong>. No content is written that can't win. If <em>every</em> zone ends up on outreach &rarr; taxonomy mismatch P0, re-run Phase 0.5.
   </div>
 
   <div class="footer"><div class="footer-l">Antonio Blago &middot; info@antonioblago.com</div><div class="footer-r">Part 1 &mdash; Pitch</div></div>
